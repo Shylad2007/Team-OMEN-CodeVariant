@@ -52,16 +52,9 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
 
         {/* Action CTAs */}
         <div className="hidden sm:flex items-center gap-3">
-          {user ? (
+          {!user && (
             <Link 
-              to="/dashboard"
-              className="retro-btn retro-btn-secondary text-xs py-2 px-3.5 font-mono font-bold"
-            >
-              Dashboard
-            </Link>
-          ) : (
-            <Link 
-              to="/dashboard"
+              to="/login"
               className="retro-btn retro-btn-secondary text-xs py-2 px-3.5 font-mono font-bold"
             >
               Sign In
@@ -120,22 +113,37 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
           </a>
 
           <div className="flex gap-2 pt-2">
-            <Link 
-              to="/dashboard"
-              onClick={() => setMobileMenuOpen(false)}
-              className="retro-btn retro-btn-secondary text-xs py-2 flex-1 text-center font-bold"
-            >
-              {user ? 'Dashboard' : 'Sign In'}
-            </Link>
-            <button 
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onScrollToSimulator();
-              }}
-              className="retro-btn text-xs py-2 flex-1 font-bold"
-            >
-              Start Assessment
-            </button>
+            {!user ? (
+              <>
+                <Link 
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="retro-btn retro-btn-secondary text-xs py-2 flex-1 text-center font-bold"
+                >
+                  Sign In
+                </Link>
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onScrollToSimulator();
+                  }}
+                  className="retro-btn text-xs py-2 flex-1 font-bold"
+                >
+                  Assess Item
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onScrollToSimulator();
+                }}
+                className="retro-btn text-xs py-2 w-full font-bold flex items-center justify-center gap-2"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Start Assessment
+              </button>
+            )}
           </div>
         </div>
       )}
