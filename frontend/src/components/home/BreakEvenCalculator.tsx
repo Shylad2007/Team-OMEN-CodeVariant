@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 export const BreakEvenCalculator: React.FC = () => {
   const [compRepairCost, setCompRepairCost] = useState<number>(45);
@@ -60,7 +61,7 @@ export const BreakEvenCalculator: React.FC = () => {
                 <div className="flex justify-between items-center mb-1 font-mono text-xs">
                   <span className="font-bold">Estimated Repair Cost (Parts + Tools):</span>
                   <span className="font-black text-sm bg-[#FFE600] px-2 py-0.5 border border-[#0B0B0B]">
-                    ${compRepairCost}
+                    {compRepairCost}
                   </span>
                 </div>
                 <input 
@@ -73,9 +74,9 @@ export const BreakEvenCalculator: React.FC = () => {
                   className="w-full accent-[#0B0B0B] cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-[#6C6659] mt-0.5">
-                  <span>$10 (DIY Belt/Fuse)</span>
-                  <span>$150 (Subsystem)</span>
-                  <span>$300 (Complex Overhaul)</span>
+                  <span>10 (DIY Belt/Fuse)</span>
+                  <span>150 (Subsystem)</span>
+                  <span>300 (Complex Overhaul)</span>
                 </div>
               </div>
 
@@ -84,7 +85,7 @@ export const BreakEvenCalculator: React.FC = () => {
                 <div className="flex justify-between items-center mb-1 font-mono text-xs">
                   <span className="font-bold">Cost of Equivalent New Item:</span>
                   <span className="font-black text-sm bg-white px-2 py-0.5 border border-[#0B0B0B]">
-                    ${compReplaceCost}
+                    {compReplaceCost}
                   </span>
                 </div>
                 <input 
@@ -97,9 +98,9 @@ export const BreakEvenCalculator: React.FC = () => {
                   className="w-full accent-[#0B0B0B] cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-[#6C6659] mt-0.5">
-                  <span>$50 (Entry-Level)</span>
-                  <span>$400 (Mid-Range)</span>
-                  <span>$800 (Premium)</span>
+                  <span>50 (Entry-Level)</span>
+                  <span>400 (Mid-Range)</span>
+                  <span>800 (Premium)</span>
                 </div>
               </div>
 
@@ -125,7 +126,7 @@ export const BreakEvenCalculator: React.FC = () => {
               <div className="bg-[#F4EFE2] border-2 border-[#0B0B0B] p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-center">
                 <div className="p-2 bg-white border border-[#0B0B0B]">
                   <div className="text-[10px] text-[#6C6659] uppercase font-bold">Capital Retained</div>
-                  <div className="text-xl font-black text-[#10B25A] mt-1">${moneySaved}</div>
+                  <div className="text-xl font-black text-[#10B25A] mt-1">{moneySaved}</div>
                 </div>
                 <div className="p-2 bg-white border border-[#0B0B0B]">
                   <div className="text-[10px] text-[#6C6659] uppercase font-bold">Repair to Replace Ratio</div>
@@ -133,7 +134,7 @@ export const BreakEvenCalculator: React.FC = () => {
                 </div>
                 <div className="p-2 bg-white border border-[#0B0B0B]">
                   <div className="text-[10px] text-[#6C6659] uppercase font-bold">Annualized Cost</div>
-                  <div className="text-xl font-black text-[#2A5BFF] mt-1">${annualisedRepairCost}/yr</div>
+                  <div className="text-xl font-black text-[#2A5BFF] mt-1">{annualisedRepairCost}/yr</div>
                 </div>
               </div>
 
@@ -147,6 +148,14 @@ export const BreakEvenCalculator: React.FC = () => {
                    salvageRatio <= 65 ? 'Marginal viability' :
                    'Favors replacement'}
                 </span>
+
+                <Link
+                  to="/assess"
+                  className="font-bold text-[#2A5BFF] hover:text-[#0B0B0B] hover:underline flex items-center gap-1"
+                >
+                  <span>Evaluate your real item</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
 
             </div>

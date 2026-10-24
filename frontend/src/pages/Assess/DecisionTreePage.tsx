@@ -17,8 +17,6 @@ export const DecisionTreePage: React.FC = () => {
     isItemAssessed,
     assessmentId,
     selectedBranchId: contextBranchId,
-    saveStatus,
-    saveError,
     saveAssessment,
     loadAssessment,
   } = useAssessment();
@@ -183,37 +181,7 @@ export const DecisionTreePage: React.FC = () => {
           </div>
 
           {/* Navigation Controls */}
-          <div className="flex items-center gap-3">
-            {/* Persistence Status Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#FFFDF5] border border-[#0B0B0B] text-[11px] font-mono shadow-[1px_1px_0px_#0B0B0B]">
-              {saveStatus === 'saving' && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-[#D97706] animate-pulse" />
-                  <span className="font-bold text-[#D97706]">SAVING...</span>
-                </>
-              )}
-              {saveStatus === 'saved' && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-[#10B25A]" />
-                  <span className="font-bold text-[#10B25A]">SAVED TO CLOUD</span>
-                </>
-              )}
-              {saveStatus === 'error' && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-[#E53E3E]" />
-                  <span className="font-bold text-[#E53E3E]" title={saveError || 'Save error'}>
-                    LOCAL ONLY
-                  </span>
-                </>
-              )}
-              {saveStatus === 'idle' && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-[#6C6659]" />
-                  <span className="text-[#6C6659]">PERSISTED</span>
-                </>
-              )}
-            </div>
-
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={handleReset}
@@ -226,21 +194,10 @@ export const DecisionTreePage: React.FC = () => {
 
             <Link
               to={`/assess${assessmentId ? `?id=${assessmentId}` : ''}`}
-              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3"
+              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>← Edit Item</span>
-            </Link>
-
-            {/* Compare Repair vs Replace CTA */}
-            <Link
-              to={`/assess/comparator${assessmentId ? `?id=${assessmentId}` : ''}`}
-              className="assessment-nav-btn bg-[#FFFDF5] hover:bg-[#FFE600] text-xs py-1.5 px-3 border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] flex items-center gap-1.5 font-mono font-bold"
-              title="Compare Repair vs Replace Trade-offs"
-            >
-              <Sliders className="w-3.5 h-3.5 text-[#2A5BFF]" />
-              <span className="hidden md:inline">Repair vs Replace</span>
-              <span className="md:hidden">Compare</span>
+              <span>Edit Item</span>
             </Link>
 
             {/* Primary Workflow Continuation CTA */}

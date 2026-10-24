@@ -21,8 +21,6 @@ export const Assessment: React.FC = () => {
     updateData,
     resetData,
     assessmentId,
-    saveStatus,
-    saveError,
     currentStep,
     saveAssessment,
     loadAssessment,
@@ -168,37 +166,7 @@ export const Assessment: React.FC = () => {
             </div>
           </Link>
 
-          <div className="flex items-center gap-3">
-            {/* Persistence Status Indicator */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#FFFDF5] border border-[#0B0B0B] text-[11px] font-mono shadow-[1px_1px_0px_#0B0B0B]">
-              {saveStatus === 'saving' && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-[#D97706] animate-pulse" />
-                  <span className="font-bold text-[#D97706]">SAVING...</span>
-                </>
-              )}
-              {saveStatus === 'saved' && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-[#10B25A]" />
-                  <span className="font-bold text-[#10B25A]">SAVED</span>
-                </>
-              )}
-              {saveStatus === 'error' && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-[#E53E3E]" />
-                  <span className="font-bold text-[#E53E3E]" title={saveError || 'Save error'}>
-                    LOCAL DRAFT
-                  </span>
-                </>
-              )}
-              {saveStatus === 'idle' && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-[#6C6659]" />
-                  <span className="text-[#6C6659]">DRAFT</span>
-                </>
-              )}
-            </div>
-
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={handleReset}
@@ -211,7 +179,7 @@ export const Assessment: React.FC = () => {
 
             <Link
               to="/dashboard"
-              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3"
+              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Exit to Dashboard</span>

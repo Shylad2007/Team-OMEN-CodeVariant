@@ -92,7 +92,7 @@ export const ComparatorPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F4EFE2] text-[#0B0B0B] flex flex-col font-sans">
       {/* Top Header */}
-      <header className="bg-[#FFFDF5] border-b-2 border-[#0B0B0B] sticky top-0 z-40">
+      <header className="bg-[#F4EFE2] border-b-2 border-[#0B0B0B] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2 group">
             <div className="w-8 h-8 bg-[#FFE600] border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] flex items-center justify-center font-mono font-black text-sm group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-transform">
@@ -108,30 +108,24 @@ export const ComparatorPage: React.FC = () => {
             </div>
           </Link>
 
-          {/* Workflow Stage Badges */}
-          <div className="hidden lg:flex items-center gap-1 text-[11px] font-mono font-bold">
-            <Link to={`/assess${assessmentId ? `?id=${assessmentId}` : ''}`} className="px-2 py-0.5 text-[#6C6659] hover:text-[#0B0B0B]">
-              01. Intake
-            </Link>
-            <span className="text-[#A59F92]">›</span>
-            <Link to={`/assess/decision-tree${assessmentId ? `?id=${assessmentId}` : ''}`} className="px-2 py-0.5 text-[#6C6659] hover:text-[#0B0B0B]">
-              02. Radial Matrix
-            </Link>
-            <span className="text-[#A59F92]">›</span>
-            <span className="px-2 py-0.5 bg-[#FFE600] border border-[#0B0B0B] shadow-[1px_1px_0px_#0B0B0B]">
-              03. Trade-off Comparator
-            </span>
-            <span className="text-[#A59F92]">›</span>
-            <Link to={`/assess/action-plan${assessmentId ? `?id=${assessmentId}` : ''}`} className="px-2 py-0.5 text-[#6C6659] hover:text-[#0B0B0B]">
-              04. Action Plan
-            </Link>
-          </div>
+          {/* Item Quick Tag */}
+          {data.itemName && (
+            <div className="hidden md:flex items-center gap-2 font-mono text-xs">
+              <span className="text-[#6C6659]">EVALUATING:</span>
+              <span className="font-bold text-[#0B0B0B] px-2 py-0.5 bg-[#FFFDF5] border border-[#0B0B0B]">
+                {data.itemName}
+              </span>
+              <span className="px-2 py-0.5 bg-[#FFE600] border border-[#0B0B0B] font-black uppercase text-[10px]">
+                {data.category}
+              </span>
+            </div>
+          )}
 
           {/* Navigation CTAs */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to={`/assess/decision-tree${assessmentId ? `?id=${assessmentId}` : ''}`}
-              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3"
+              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono font-bold"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Matrix</span>
@@ -150,11 +144,19 @@ export const ComparatorPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <span>Proceed to Action Plan</span>
+                  <span>Action Plan</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
+
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center text-xs font-mono font-bold text-[#6C6659] hover:text-[#0B0B0B] py-1.5 px-2 transition-colors"
+              title="Return to Dashboard"
+            >
+              <span>Dashboard</span>
+            </Link>
           </div>
         </div>
       </header>
