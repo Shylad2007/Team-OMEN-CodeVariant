@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Edit2, CheckCircle2, RotateCcw, Sparkles } from 'lucide-react';
 import type { AssessmentData, AssessmentStage } from './types';
 import { CATEGORIES, CONDITIONS, ITEM_AGES, BUDGET_OPTIONS, URGENCY_OPTIONS, PRIORITY_OPTIONS, ADAPTIVE_QUESTIONS } from './questions';
@@ -231,7 +230,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
           All item parameters are valid. Continuing launches the dedicated <strong>Circular Decision Tree</strong> on an expansive canvas, arranging all five circular pathways (Repair, Reuse, Repurpose, Replace, and Recycle) radially around this item.
         </p>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <div className="pt-2">
           <button
             type="button"
             onClick={onReset}
@@ -240,14 +239,6 @@ export const StepReview: React.FC<StepReviewProps> = ({
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Assessment</span>
           </button>
-
-          <Link
-            to="/assess/decision-tree"
-            className="assessment-nav-btn text-xs py-2.5 px-4 ml-auto font-bold flex items-center gap-2 shadow-[4px_4px_0px_#0B0B0B]"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Launch Circular Decision Tree →</span>
-          </Link>
         </div>
       </div>
     </div>
