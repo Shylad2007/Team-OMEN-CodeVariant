@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, RotateCcw, Layers, Cpu, CheckCircle2 } from 'lucide-react';
 import type { AssessmentData, AssessmentStage } from '../../components/assessment/types';
 import { AssessmentStepper } from '../../components/assessment/AssessmentStepper';
 import { StepItemIdentity } from '../../components/assessment/StepItemIdentity';
@@ -10,10 +10,21 @@ import { StepAdaptiveQuestions } from '../../components/assessment/StepAdaptiveQ
 import { StepReview } from '../../components/assessment/StepReview';
 import { ADAPTIVE_QUESTIONS } from '../../components/assessment/questions';
 import { useAssessment } from '../../context/AssessmentContext';
+import {
+  CanvasProtocolProvider,
+  DraggableCard,
+  ActionZone,
+  CanvasHUD,
+  useCanvasProtocol,
+} from '../../components/canvas';
 import './Assessment.css';
 
-export const Assessment: React.FC = () => {
+/**
+ * Inner stepper canvas component that consumes CanvasProtocolContext
+ */
+const AssessmentCanvasBody: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const urlAssessmentId = searchParams.get('id');
   const isExplicitNew = searchParams.get('new') === 'true' || urlAssessmentId === 'new';
 
@@ -27,13 +38,13 @@ export const Assessment: React.FC = () => {
     loadAssessment,
   } = useAssessment();
 
+  const { setStatusMessage } = useCanvasProtocol();
   const [currentStage, setCurrentStage] = useState<AssessmentStage>(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const lastHandledIdRef = useRef<string | null>(null);
 
   // Ensure every assessment session has a dedicated unique ID and isolated state
   useEffect(() => {
-    // 1. If explicitly new or no ID is provided, initialize a fresh assessment
     if (isExplicitNew || !urlAssessmentId) {
       const freshId = startNewAssessment();
       lastHandledIdRef.current = freshId;
@@ -42,25 +53,23 @@ export const Assessment: React.FC = () => {
       return;
     }
 
-    // 2. If an existing ID was requested in URL, load it if not already handled
     if (urlAssessmentId && urlAssessmentId !== lastHandledIdRef.current) {
       lastHandledIdRef.current = urlAssessmentId;
       if (urlAssessmentId !== assessmentId) {
         loadAssessment(urlAssessmentId);
       }
     }
-  }, [urlAssessmentId, isExplicitNew, startNewAssessment, loadAssessment, setSearchParams]);
+  }, [urlAssessmentId, isExplicitNew, startNewAssessment, loadAssessment, setSearchParams, assessmentId]);
 
   // Sync current stage if loaded assessment has a valid step
   useEffect(() => {
     if (currentStep >= 1 && currentStep <= 5 && currentStep !== currentStage) {
       setCurrentStage(currentStep as AssessmentStage);
     }
-  }, [currentStep]);
+  }, [currentStep, currentStage]);
 
   const handleUpdate = (updates: Partial<AssessmentData>) => {
     updateData(updates);
-    // Clear relevant error keys
     setErrors((prev) => {
       const next = { ...prev };
       Object.keys(updates).forEach((k) => delete next[k]);
@@ -121,19 +130,36 @@ export const Assessment: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const advanceToNextStage = async () => {
     if (!validateStage(currentStage)) {
       window.scrollTo({ top: 120, behavior: 'smooth' });
-      return;
+      setStatusMessage(`Validation failed for Stage 0${currentStage}. Please check highlighted fields.`);
+      return false;
     }
 
     if (currentStage < 5) {
       const nextStage = (currentStage + 1) as AssessmentStage;
       setCurrentStage(nextStage);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      // Save current assessment progress
-      saveAssessment({ currentStep: nextStage, isCompleted: false });
+      await saveAssessment({ currentStep: nextStage, isCompleted: false });
+      setStatusMessage(`Successfully advanced to Stage 0${nextStage}`);
+      return true;
     }
+    return true;
+  };
+
+  const launchDecisionMatrix = async () => {
+    if (!validateStage(5)) {
+      window.scrollTo({ top: 120, behavior: 'smooth' });
+      setStatusMessage('Validation failed on review stage.');
+      return false;
+    }
+
+    await saveAssessment({ currentStep: 5, isCompleted: false });
+    setStatusMessage('Diagnostic verified. Launching Circular Decision Matrix...');
+    const targetId = assessmentId || urlAssessmentId;
+    navigate(`/assess/decision-tree${targetId ? `?id=${targetId}` : ''}`);
+    return true;
   };
 
   const handleBack = () => {
@@ -141,11 +167,11 @@ export const Assessment: React.FC = () => {
       const prevStage = (currentStage - 1) as AssessmentStage;
       setCurrentStage(prevStage);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      setStatusMessage(`Navigated back to Stage 0${prevStage}`);
     }
   };
 
   const handleNavigateToStage = (stage: AssessmentStage) => {
-    // Allow jumping back to earlier stages or forward if validated
     if (stage <= currentStage || validateStage(currentStage)) {
       setCurrentStage(stage);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -160,11 +186,12 @@ export const Assessment: React.FC = () => {
       setCurrentStage(1);
       setErrors({});
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      setStatusMessage('Assessment reset to clean Stage 01 state');
     }
   };
 
   return (
-    <div className="assessment-page retro-grid-pattern">
+    <div className="assessment-page retro-grid-pattern min-h-screen flex flex-col flex-1">
       {/* Top Header */}
       <header className="bg-[#F4EFE2] border-b-2 border-[#0B0B0B] sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
@@ -204,9 +231,9 @@ export const Assessment: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Assessment Container (Clean Item Entry Form) */}
+      {/* Main Assessment Container */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
-        {/* Stepper Progress Bar */}
+        {/* Stepper Progress Bar (Non-mutating stage inspector) */}
         <AssessmentStepper
           currentStage={currentStage}
           onSelectStage={handleNavigateToStage}
@@ -254,55 +281,137 @@ export const Assessment: React.FC = () => {
             />
           )}
 
-          {/* Form Navigation Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-8 mt-8 border-t-2 border-[#0B0B0B]">
-            {currentStage > 1 ? (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="assessment-nav-btn assessment-nav-btn-secondary"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Previous Stage</span>
-              </button>
-            ) : (
-              <Link
-                to="/dashboard"
-                className="assessment-nav-btn assessment-nav-btn-secondary text-xs"
-              >
-                <span>Cancel & Return</span>
-              </Link>
-            )}
+          {/* Canvas Protocol Stepper Dock (Replaces standard buttons with Draggable Capsule + Action Zones) */}
+          <div className="pt-8 mt-8 border-t-2 border-[#0B0B0B]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-[#FFE600] border border-[#0B0B0B]" />
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#0B0B0B]">
+                  Assessment Stepper Dock
+                </span>
+              </div>
+              <span className="font-mono text-[11px] text-[#6C6659]">
+                Drag Stage Token to Zone or press Space + Enter
+              </span>
+            </div>
 
-            {currentStage < 5 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="assessment-nav-btn ml-auto shadow-[4px_4px_0px_#0B0B0B]"
-              >
-                <span>Continue to Stage 0{currentStage + 1}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <Link
-                to={`/assess/decision-tree${assessmentId ? `?id=${assessmentId}` : ''}`}
-                onClick={() => {
-                  saveAssessment({ currentStep: 5, isCompleted: false });
-                }}
-                className="assessment-nav-btn ml-auto shadow-[4px_4px_0px_#0B0B0B] flex items-center gap-1.5"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Launch Circular Decision Tree →</span>
-              </Link>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              {/* Draggable Active Stage Capsule */}
+              <div className="md:col-span-5 flex flex-col">
+                <DraggableCard
+                  payload={{
+                    type: currentStage < 5 ? 'intake_capsule' : 'review_verdict_token',
+                    id: `stage-token-0${currentStage}`,
+                    title: `Stage 0${currentStage} Diagnostic Capsule`,
+                    subtitle: data.itemName ? `Item: ${data.itemName}` : 'Parameters in transit',
+                    badge: `STAGE 0${currentStage}/05`,
+                    badgeColor: '#FFE600',
+                    data: {
+                      stage: currentStage,
+                      assessmentId,
+                      itemName: data.itemName,
+                    },
+                  }}
+                  className="h-full"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#FFE600] border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] flex items-center justify-center shrink-0">
+                      <Layers className="w-5 h-5 text-[#0B0B0B]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 bg-[#0B0B0B] text-[#FFFDF5] font-mono text-[10px] font-black uppercase">
+                          {`STAGE 0${currentStage}`}
+                        </span>
+                        <span className="font-mono text-[10px] text-[#10B25A] font-bold">
+                          READY FOR TRANSIT
+                        </span>
+                      </div>
+                      <div className="font-display font-black text-sm text-[#0B0B0B] truncate">
+                        {data.itemName || 'Untitled Diagnostic Payload'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-3 pt-2 border-t border-[#0B0B0B]/20 text-[11px] font-mono text-[#544E43]">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#10B25A]" />
+                    <span>Drag this capsule to advance or synthesize</span>
+                  </div>
+                </DraggableCard>
+              </div>
+
+              {/* Action Zone: Advance or Launch */}
+              <div className="md:col-span-7 flex flex-col">
+                {currentStage < 5 ? (
+                  <ActionZone
+                    id={`advance-to-stage-0${currentStage + 1}`}
+                    label={`Advance to Stage 0${currentStage + 1}`}
+                    hint={`Commit Stage 0${currentStage} diagnostic payload & unlock next questionnaire step`}
+                    accepts={['intake_capsule']}
+                    icon={<ArrowRight className="w-5 h-5 text-[#2A5BFF]" />}
+                    activeColor="bg-[#2A5BFF]/10"
+                    onDrop={advanceToNextStage}
+                    className="h-full flex-1"
+                  />
+                ) : (
+                  <ActionZone
+                    id="launch-decision-matrix-zone"
+                    label="Launch Circular Decision Matrix"
+                    hint="Evaluate radial pathways (Repair, Reuse, Repurpose, Replace, Recycle) via deterministic engine"
+                    accepts={['review_verdict_token', 'intake_capsule']}
+                    icon={<Cpu className="w-5 h-5 text-[#10B25A]" />}
+                    activeColor="bg-[#10B25A]/10"
+                    onDrop={launchDecisionMatrix}
+                    className="h-full flex-1"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Secondary non-mutating navigation / reset bar */}
+            <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#0B0B0B]/15 text-xs font-mono">
+              {currentStage > 1 ? (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="px-3 py-1.5 bg-[#FFFDF5] border-2 border-[#0B0B0B] hover:bg-[#F4EFE2] text-[#0B0B0B] font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-[2px_2px_0px_#0B0B0B]"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Previous Stage</span>
+                </button>
+              ) : (
+                <Link
+                  to="/dashboard"
+                  className="px-3 py-1.5 bg-[#FFFDF5] border-2 border-[#0B0B0B] hover:bg-[#F4EFE2] text-[#0B0B0B] font-bold flex items-center gap-1.5 transition-colors shadow-[2px_2px_0px_#0B0B0B]"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Return to Dashboard</span>
+                </Link>
+              )}
+
+              <span className="text-[11px] font-bold text-[#6C6659]">
+                Step {currentStage} of 5 Completed
+              </span>
+            </div>
           </div>
         </div>
       </main>
 
       {/* Footer */}
       <footer className="py-6 text-center font-mono text-xs text-[#6C6659] border-t-2 border-[#0B0B0B] bg-[#FFFDF5]">
-        <span>R3VIVE Assessment Engine • Clean Diagnostic Entry • Verified Circular Evaluation</span>
+        <span>R3VIVE Assessment Engine • Verified Deterministic Circular Logic</span>
       </footer>
+
+      {/* Floating Canvas HUD */}
+      <CanvasHUD />
     </div>
+  );
+};
+
+export const Assessment: React.FC = () => {
+  return (
+    <CanvasProtocolProvider>
+      <AssessmentCanvasBody />
+    </CanvasProtocolProvider>
   );
 };

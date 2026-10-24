@@ -66,7 +66,7 @@ export const CircularNodeInspector: React.FC<CircularNodeInspectorProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 hover:bg-[#F4EFE2] border border-[#0B0B0B] text-[#0B0B0B]"
+            className="p-1.5 bg-[#FFFDF5] hover:bg-[#FF3344] hover:text-white border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] text-[#0B0B0B] transition-colors cursor-pointer"
             title="Close inspector"
           >
             <X className="w-4 h-4" />
@@ -144,7 +144,7 @@ export const CircularNodeInspector: React.FC<CircularNodeInspectorProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 hover:bg-[#F4EFE2] border border-[#0B0B0B] text-[#0B0B0B]"
+            className="p-1.5 bg-[#FFFDF5] hover:bg-[#FF3344] hover:text-white border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] text-[#0B0B0B] transition-colors cursor-pointer"
             title="Close inspector"
           >
             <X className="w-4 h-4" />
@@ -312,7 +312,7 @@ export const CircularNodeInspector: React.FC<CircularNodeInspectorProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 hover:bg-[#F4EFE2] border border-[#0B0B0B] text-[#0B0B0B]"
+            className="p-1.5 bg-[#FFFDF5] hover:bg-[#FF3344] hover:text-white border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] text-[#0B0B0B] transition-colors cursor-pointer"
             title="Close inspector"
           >
             <X className="w-4 h-4" />

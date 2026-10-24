@@ -24,9 +24,15 @@ import { useAssessment } from '../../context/AssessmentContext';
 import { evaluateCircularDecisionTree } from '../../components/assessment/circular/circularTreeData';
 import { getDecisionAiGuidance, type DecisionGuidanceResult } from '../../services/assessmentApi';
 import type { OutcomeType } from '../../components/assessment/circular/circularTreeTypes';
+import {
+  CanvasProtocolProvider,
+  DraggableCard,
+  ActionZone,
+  CanvasHUD,
+} from '../../components/canvas';
 import './Assessment.css';
 
-export const ActionPlanPage: React.FC = () => {
+const ActionPlanCanvasBody: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlAssessmentId = searchParams.get('id');
@@ -234,10 +240,10 @@ export const ActionPlanPage: React.FC = () => {
   };
 
   // Finalize and return to dashboard
-  const handleAssessAnother = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleAssessAnother = (_e?: React.MouseEvent) => {
     const freshId = startNewAssessment();
     navigate(`/assess?id=${freshId}`);
+    return true;
   };
 
   const handleFinalizeAndExit = async () => {
@@ -252,8 +258,10 @@ export const ActionPlanPage: React.FC = () => {
         checklistProgress,
       });
       navigate('/dashboard#decisions');
+      return true;
     } catch (err: any) {
       setFeedbackMessage(err.message || 'Failed to save before exiting. Please retry.');
+      return false;
     } finally {
       setIsFinalizing(false);
     }
@@ -299,7 +307,7 @@ export const ActionPlanPage: React.FC = () => {
   }
 
   return (
-    <div className="assessment-page retro-grid-pattern min-h-screen flex flex-col">
+    <div className="assessment-page retro-grid-pattern min-h-screen flex flex-col flex-1">
       {/* =========================================================================
           Dedicated Printable Action Plan (Print Only — Clean, Ink-Efficient)
           ========================================================================= */}
@@ -977,56 +985,101 @@ export const ActionPlanPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Bottom Navigation & Finalize Toolbar */}
-          <div className="assessment-card p-6 bg-[#FFFDF5] flex flex-wrap items-center justify-between gap-4">
-            {/* Return to Graph Button */}
-            <Link
-              to={`/assess/decision-tree${assessmentId ? `?id=${assessmentId}` : ''}`}
-              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-2 px-4 flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Return to Decision Matrix</span>
-            </Link>
+          {/* Bottom Navigation & Canvas Protocol Dock */}
+          <div className="assessment-card p-6 bg-[#FFFDF5] border-2 border-[#0B0B0B] shadow-[4px_4px_0px_#0B0B0B] space-y-4">
+            <div className="flex flex-wrap items-center justify-between border-b border-[#0B0B0B]/20 pb-3 gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-[#FFE600] border border-[#0B0B0B]" />
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#0B0B0B]">
+                  Action Plan Execution Dock
+                </span>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 bg-[#FFFDF5] border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] hover:bg-[#FFE600] font-mono text-xs font-bold text-[#0B0B0B] flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Print Workshop Action Plan"
+                >
+                  <Printer className="w-3.5 h-3.5 text-[#0B0B0B]" />
+                  <span>Print Plan</span>
+                </button>
+                <Link
+                  to={`/assess/decision-tree${assessmentId ? `?id=${assessmentId}` : ''}`}
+                  className="px-3 py-1.5 bg-[#FFFDF5] border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] hover:bg-[#F4EFE2] font-mono text-xs font-bold text-[#0B0B0B] flex items-center gap-1.5 transition-all"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Return to Decision Matrix</span>
+                </Link>
+              </div>
+            </div>
 
-            <div className="flex items-center gap-3 ml-auto flex-wrap">
-              <button
-                type="button"
-                onClick={handleAssessAnother}
-                className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5 cursor-pointer"
-                title="Evaluate another item"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Assess Another Item</span>
-              </button>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              {/* Draggable Active Action Plan Token */}
+              <div className="md:col-span-4 flex flex-col">
+                <DraggableCard
+                  payload={{
+                    type: 'action_plan_token',
+                    id: `plan-token-${assessmentId || 'active'}`,
+                    title: `ACTION PLAN: ${activeOutcome.toUpperCase()}`,
+                    subtitle: `${data.itemName || 'Assessed Item'} • ${completedCount}/${totalCount} Done`,
+                    badge: `${progressPercent}% COMPLETED`,
+                    badgeColor: progressPercent === 100 ? '#10B25A' : '#FFE600',
+                    data: {
+                      assessmentId,
+                      outcome: activeOutcome,
+                      branchId: activeBranchId,
+                      checklistProgress,
+                    },
+                  }}
+                  className="h-full"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-[#10B25A] text-white border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-mono text-[10px] text-[#6C6659] block uppercase font-bold">
+                        EXECUTION CAPSULE
+                      </span>
+                      <strong className="font-display font-black text-xs text-[#0B0B0B] block truncate">
+                        {data.itemName || 'Current Item'}
+                      </strong>
+                      <span className="font-mono text-[10.5px] text-[#10B25A] font-bold block">
+                        {completedCount} of {totalCount} verified
+                      </span>
+                    </div>
+                  </div>
+                </DraggableCard>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer"
-                title="Print Workshop Action Plan"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Print Plan</span>
-              </button>
+              {/* Action Zone 1: Finalize Decision */}
+              <div className="md:col-span-4 flex flex-col">
+                <ActionZone
+                  id="finalize-decision-zone"
+                  label={isFinalizing ? "Saving to Vault..." : "Finalize & Sync to Vault"}
+                  hint="Drop execution capsule here to save checklist and view in Decision Vault"
+                  accepts={['action_plan_token', 'decision_node_token', 'review_verdict_token']}
+                  icon={<CheckCircle2 className="w-5 h-5 text-[#10B25A]" />}
+                  activeColor="bg-[#10B25A]/10"
+                  onDrop={handleFinalizeAndExit}
+                  className="h-full"
+                />
+              </div>
 
-              <button
-                type="button"
-                onClick={handleFinalizeAndExit}
-                disabled={isFinalizing}
-                className="assessment-nav-btn text-xs py-2 px-5 flex items-center gap-1.5 shadow-[3px_3px_0px_#0B0B0B] cursor-pointer"
-              >
-                {isFinalizing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Save Decision & Exit to Dashboard</span>
-                  </>
-                )}
-              </button>
+              {/* Action Zone 2: Assess Another Item */}
+              <div className="md:col-span-4 flex flex-col">
+                <ActionZone
+                  id="assess-another-zone"
+                  label="Initialize Next Item"
+                  hint="Drop execution capsule here to archive progress and launch fresh assessment"
+                  accepts={['action_plan_token', 'new_assessment_token']}
+                  icon={<Plus className="w-5 h-5 text-[#2A5BFF]" />}
+                  activeColor="bg-[#2A5BFF]/10"
+                  onDrop={() => handleAssessAnother()}
+                  className="h-full"
+                />
+              </div>
             </div>
           </div>
         </main>
@@ -1035,7 +1088,18 @@ export const ActionPlanPage: React.FC = () => {
         <footer className="py-6 text-center font-mono text-xs text-[#6C6659] border-t-2 border-[#0B0B0B] bg-[#FFFDF5]">
           <span>R3VIVE Smart Action Plan Engine • Verified Circular Execution • Persistent Diagnostics</span>
         </footer>
+
+        {/* Floating Canvas HUD */}
+        <CanvasHUD />
       </div>
     </div>
+  );
+};
+
+export const ActionPlanPage: React.FC = () => {
+  return (
+    <CanvasProtocolProvider>
+      <ActionPlanCanvasBody />
+    </CanvasProtocolProvider>
   );
 };

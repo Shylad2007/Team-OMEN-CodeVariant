@@ -10,12 +10,13 @@ export const ActionPlansSection: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!session?.access_token) return;
+    const token = session?.access_token;
+    if (!token) return;
 
     let isMounted = true;
     setLoading(true);
 
-    listUserAssessments(session.access_token)
+    listUserAssessments(token)
       .then((items) => {
         if (!isMounted) return;
         const finished = items.filter((item) => item.is_completed || item.current_step >= 5);

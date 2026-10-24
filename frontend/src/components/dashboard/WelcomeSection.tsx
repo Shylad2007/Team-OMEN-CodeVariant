@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAssessment } from '../../context/AssessmentContext';
-import { ArrowRight, Sparkles, Compass } from 'lucide-react';
+import { Sparkles, Compass, Plus } from 'lucide-react';
+import { DraggableCard, ActionZone } from '../canvas';
 
 interface WelcomeSectionProps {
   userDisplayName: string;
@@ -11,11 +12,11 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({ userDisplayName 
   const { startNewAssessment } = useAssessment();
   const navigate = useNavigate();
 
-  const handleStartNew = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleLaunchIntake = () => {
     const freshId = startNewAssessment();
     navigate(`/assess?id=${freshId}`);
   };
+
   return (
     <section className="mb-12">
       <div className="dashboard-card dashboard-bracket p-6 sm:p-10 bg-[#FFFDF5]">
@@ -39,34 +40,72 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({ userDisplayName 
         </h1>
 
         {/* Introduction */}
-        <p className="font-sans text-base sm:text-lg text-[#262422] max-w-2xl leading-relaxed mb-8">
+        <p className="font-sans text-base sm:text-lg text-[#262422] max-w-2xl leading-relaxed mb-6">
           Before discarding an item or rushing to replace it, evaluate its condition and explore five
           practical pathways: <strong>repair</strong>, <strong>reuse</strong>, <strong>repurpose</strong>,{' '}
           <strong>replace</strong>, or <strong>recycle</strong>. Get honest trade-offs, break-even
           comparisons, and a realistic plan to move forward.
         </p>
 
-        {/* Action Row */}
-        <div className="flex flex-wrap items-center gap-4 pt-4 border-t-2 border-[#0B0B0B]/15">
-          {/* Primary Action Button */}
-          <button
-            type="button"
-            onClick={handleStartNew}
-            className="retro-btn text-sm sm:text-base py-3.5 px-6 font-mono font-black flex items-center gap-2 group shadow-[4px_4px_0px_#0B0B0B] hover:shadow-[5px_5px_0px_#0B0B0B] cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 text-[#0B0B0B]" />
-            <span>Assess an Item</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-          </button>
+        {/* Action Deck */}
+        <div className="pt-6 border-t-2 border-[#0B0B0B]/15">
+          <div className="mb-2 font-mono text-[10.5px] font-bold text-[#6C6659] uppercase tracking-wider flex items-center gap-2">
+            <span className="w-2 h-2 bg-[#FFE600] border border-[#0B0B0B] inline-block" />
+            <span>Drag the intake card to begin (or press Space + Enter)</span>
+          </div>
 
-          {/* Secondary Action */}
-          <Link
-            to="/"
-            className="retro-btn retro-btn-secondary text-xs sm:text-sm py-3 px-5 font-mono font-bold flex items-center gap-2"
-          >
-            <Compass className="w-4 h-4 text-[#2A5BFF]" />
-            <span>Explore Homepage Simulator</span>
-          </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch mb-4">
+            {/* Draggable Intake Token */}
+            <DraggableCard
+              payload={{
+                type: 'new_assessment_token',
+                id: 'new_intake_token',
+                title: 'Item Intake Token',
+                subtitle: 'Diagnostic evaluation capsule',
+                badge: 'TOKEN',
+                badgeColor: 'bg-[#FFE600] text-[#0B0B0B]',
+              }}
+              onCardClick={handleLaunchIntake}
+              className="h-full"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#FFE600] border-2 border-[#0B0B0B] flex items-center justify-center font-black shadow-[2px_2px_0px_#0B0B0B] shrink-0">
+                  <Plus className="w-5 h-5 text-[#0B0B0B]" />
+                </div>
+                <div>
+                  <h4 className="font-display font-black text-sm sm:text-base text-[#0B0B0B] leading-tight">
+                    Item Intake Payload Card
+                  </h4>
+                  <p className="font-mono text-xs text-[#6C6659] mt-0.5">
+                    Click to grab or drag directly into initialization zone →
+                  </p>
+                </div>
+              </div>
+            </DraggableCard>
+
+            {/* Action Zone: Initialize Intake */}
+            <ActionZone
+              id="zone_initialize_intake"
+              accepts={['new_assessment_token']}
+              label="Initialize Item Assessment"
+              hint="Drop Intake Payload here to generate new unique ID and open questionnaire"
+              icon={<Sparkles className="w-4 h-4 text-[#0B0B0B]" />}
+              activeColor="bg-[#FFE600]"
+              onDrop={handleLaunchIntake}
+              className="border-2 border-dashed border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B]"
+            />
+          </div>
+
+          {/* Secondary Permitted Navigation */}
+          <div className="flex items-center gap-3 pt-2">
+            <Link
+              to="/"
+              className="font-mono text-xs font-bold text-[#2A5BFF] hover:underline flex items-center gap-1.5"
+            >
+              <Compass className="w-4 h-4 text-[#2A5BFF]" />
+              <span>Explore Homepage Simulator →</span>
+            </Link>
+          </div>
         </div>
 
       </div>

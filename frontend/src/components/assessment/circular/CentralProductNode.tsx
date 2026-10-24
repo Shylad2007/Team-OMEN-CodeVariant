@@ -13,7 +13,7 @@ export const CentralProductNode: React.FC<CentralProductNodeProps> = ({ data }) 
   return (
     <div
       onClick={() => onNodeClick && onNodeClick('product_center')}
-      className="w-[230px] p-2.5 bg-[#FFFDF5] border-2 border-[#0B0B0B] shadow-[4px_4px_0px_#0B0B0B] font-sans text-left relative cursor-pointer group hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+      className="w-[220px] p-2.5 bg-[#FFFDF5] border-2 border-[#0B0B0B] shadow-[5px_5px_0px_#0B0B0B] font-sans text-left relative cursor-pointer group hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
     >
       {/* Handles around center perimeter for omnidirectional radial edges */}
       <Handle type="source" position={Position.Top} id="top" className="!w-2.5 !h-2.5 !bg-[#FFE600] !border !border-[#0B0B0B] !rounded-none" />

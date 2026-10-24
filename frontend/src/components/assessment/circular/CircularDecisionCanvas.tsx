@@ -17,7 +17,7 @@ import { CircularBranchNode } from './CircularBranchNode';
 import { buildCircularGraphElements } from './radialLayout';
 import { CircularNodeInspector } from './CircularNodeInspector';
 import type { EvaluatedCircularTree } from './circularTreeTypes';
-import { Maximize2, Target, Wrench, RefreshCw, Sparkles, ArrowUpRight, Trash2 } from 'lucide-react';
+import { Maximize2, Target, Wrench, RefreshCw, Sparkles, ArrowUpRight, Trash2, FileText } from 'lucide-react';
 
 interface CircularDecisionCanvasProps {
   tree: EvaluatedCircularTree;
@@ -35,7 +35,8 @@ export const CircularDecisionCanvas: React.FC<CircularDecisionCanvasProps> = ({
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerReady, setContainerReady] = useState(false);
-  const [inspectedNodeId, setInspectedNodeId] = useState<string | null>(`outcome_${tree.recommendedOutcome}`);
+  // Default to null so the full, unclipped circular graph is displayed cleanly on initial load
+  const [inspectedNodeId, setInspectedNodeId] = useState<string | null>(null);
 
   const nodeTypes: NodeTypes = useMemo(
     () => ({
@@ -220,6 +221,24 @@ export const CircularDecisionCanvas: React.FC<CircularDecisionCanvasProps> = ({
             <Maximize2 className="w-3 h-3" />
             <span>Full Map</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (inspectedNodeId) {
+                setInspectedNodeId(null);
+              } else {
+                setInspectedNodeId(activeBranchId || `outcome_${tree.recommendedOutcome}`);
+              }
+            }}
+            className={`px-2 py-0.5 border border-[#0B0B0B] text-[9.5px] font-bold flex items-center gap-1 transition-colors ml-1 ${
+              inspectedNodeId ? 'bg-[#FFE600] text-[#0B0B0B]' : 'bg-[#FFFDF5] text-[#0B0B0B] hover:bg-[#FFE600]'
+            }`}
+            title="Toggle rationale details panel"
+          >
+            <FileText className="w-3 h-3 text-[#0B0B0B]" />
+            <span>{inspectedNodeId ? 'Hide Details' : 'Node Details'}</span>
+          </button>
         </div>
       </div>
 
@@ -244,11 +263,11 @@ export const CircularDecisionCanvas: React.FC<CircularDecisionCanvasProps> = ({
               onInit={(instance) => {
                 reactFlowInstance.current = instance;
                 setTimeout(() => {
-                  instance.fitView({ padding: 0.08 });
+                  instance.fitView({ padding: 0.12 });
                 }, 60);
               }}
               fitView
-              fitViewOptions={{ padding: 0.08 }}
+              fitViewOptions={{ padding: 0.12 }}
               minZoom={0.2}
               maxZoom={2.0}
               proOptions={{ hideAttribution: true }}

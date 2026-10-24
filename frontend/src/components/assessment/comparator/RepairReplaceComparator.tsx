@@ -8,9 +8,11 @@ import {
   RotateCcw,
   Award,
   AlertCircle,
+  Workflow,
 } from 'lucide-react';
 import type { AssessmentData } from '../types';
 import type { EvaluatedCircularTree, OutcomeType } from '../circular/circularTreeTypes';
+import { DraggableCard, ActionZone } from '../../canvas';
 
 interface RepairReplaceComparatorProps {
   data: AssessmentData;
@@ -435,22 +437,31 @@ export const RepairReplaceComparator: React.FC<RepairReplaceComparatorProps> = (
           </div>
 
           <div className="pt-4 border-t-2 border-[#0B0B0B]">
-            <button
-              type="button"
-              disabled={isHazardous}
-              onClick={() => {
-                onSelectOutcome('repair');
-                onProceedToActionPlan();
+            <DraggableCard
+              payload={{
+                type: 'decision_node_token',
+                id: 'strategy-token-repair',
+                title: 'REPAIR STRATEGY CAPSULE',
+                subtitle: `Fit: ${repairSector.fitPercentage}% • Savings: ${calculations?.savingsPercent || 0}%`,
+                badge: isHazardous ? 'CONTRAINDICATED' : (isRepairRecommended ? 'RECOMMENDED' : 'ALTERNATIVE'),
+                badgeColor: isHazardous ? '#DC2626' : '#10B25A',
+                data: { outcome: 'repair' },
               }}
-              className={`w-full py-2.5 px-4 font-mono font-bold text-xs uppercase border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                isHazardous
-                  ? 'bg-[#F4EFE2] text-[#8C8476] opacity-50 cursor-not-allowed'
-                  : 'bg-[#FFE600] text-[#0B0B0B] hover:bg-[#0B0B0B] hover:text-[#FFE600]'
-              }`}
+              disabled={isHazardous}
+              onCardClick={() => onSelectOutcome('repair')}
             >
-              <Wrench className="w-4 h-4" />
-              <span>{isHazardous ? 'Repair Contraindicated (Hazard)' : 'Apply Repair Strategy →'}</span>
-            </button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-[#0B0B0B]" />
+                  <span className="font-mono text-xs font-bold text-[#0B0B0B]">
+                    {isHazardous ? 'Repair Blocked (Hazard)' : 'Drag Repair Capsule to Deploy'}
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#FFE600] border border-[#0B0B0B]">
+                  {repairSector.fitPercentage}% FIT
+                </span>
+              </div>
+            </DraggableCard>
           </div>
         </div>
 
@@ -568,19 +579,55 @@ export const RepairReplaceComparator: React.FC<RepairReplaceComparatorProps> = (
           </div>
 
           <div className="pt-4 border-t-2 border-[#0B0B0B]">
-            <button
-              type="button"
-              onClick={() => {
-                onSelectOutcome('replace');
-                onProceedToActionPlan();
+            <DraggableCard
+              payload={{
+                type: 'decision_node_token',
+                id: 'strategy-token-replace',
+                title: 'REPLACE STRATEGY CAPSULE',
+                subtitle: `Fit: ${replaceSector.fitPercentage}% • Full Warranty`,
+                badge: isReplaceRecommended ? 'RECOMMENDED' : 'ALTERNATIVE',
+                badgeColor: isReplaceRecommended ? '#10B25A' : '#FF9900',
+                data: { outcome: 'replace' },
               }}
-              className="w-full py-2.5 px-4 font-mono font-bold text-xs uppercase border-2 border-[#0B0B0B] bg-[#FF9900] text-white hover:bg-[#0B0B0B] hover:text-[#FF9900] shadow-[2px_2px_0px_#0B0B0B] transition-all cursor-pointer flex items-center justify-center gap-2"
+              onCardClick={() => onSelectOutcome('replace')}
             >
-              <ArrowUpRight className="w-4 h-4" />
-              <span>Apply Replacement Strategy →</span>
-            </button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ArrowUpRight className="w-4 h-4 text-[#0B0B0B]" />
+                  <span className="font-mono text-xs font-bold text-[#0B0B0B]">
+                    Drag Replace Capsule to Deploy
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-[#FF9900] text-white border border-[#0B0B0B]">
+                  {replaceSector.fitPercentage}% FIT
+                </span>
+              </div>
+            </DraggableCard>
           </div>
         </div>
+      </div>
+
+      {/* Comparator Canvas Action Zone Dock */}
+      <div className="p-4 bg-[#FFFDF5] border-3 border-[#0B0B0B] shadow-[4px_4px_0px_#0B0B0B]">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-2.5 h-2.5 bg-[#FFE600] border border-[#0B0B0B]" />
+          <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#0B0B0B]">
+            Comparator Action Dock
+          </span>
+        </div>
+        <ActionZone
+          id="commit-comparator-strategy-zone"
+          label={`Deploy Selected Strategy: ${selectedOutcome?.toUpperCase() || 'CHOSEN PATH'}`}
+          hint="Drop either Repair Capsule or Replace Capsule here to lock in your strategy and transition to Action Plan"
+          accepts={['decision_node_token', 'review_verdict_token', 'action_plan_token']}
+          icon={<Workflow className="w-5 h-5 text-[#2A5BFF]" />}
+          activeColor="bg-[#2A5BFF]/10"
+          onDrop={(payload) => {
+            const outcome = payload.data?.outcome || (payload.id.includes('replace') ? 'replace' : 'repair');
+            onSelectOutcome(outcome);
+            onProceedToActionPlan();
+          }}
+        />
       </div>
 
       {/* Rationale Synthesis Box */}

@@ -1,16 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  ArrowLeft,
-  ArrowRight,
-  RefreshCw,
-} from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAssessment } from '../../context/AssessmentContext';
 import { evaluateCircularDecisionTree } from '../../components/assessment/circular/circularTreeData';
 import { RepairReplaceComparator } from '../../components/assessment/comparator/RepairReplaceComparator';
 import type { OutcomeType } from '../../components/assessment/circular/circularTreeTypes';
+import { CanvasProtocolProvider, CanvasHUD } from '../../components/canvas';
 
-export const ComparatorPage: React.FC = () => {
+const ComparatorCanvasBody: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlAssessmentId = searchParams.get('id');
@@ -26,7 +23,6 @@ export const ComparatorPage: React.FC = () => {
   } = useAssessment();
 
   const [activeOutcome, setActiveOutcome] = useState<OutcomeType>('repair');
-  const [isNavigating, setIsNavigating] = useState(false);
 
   // Load from URL if id provided and not already matching
   useEffect(() => {
@@ -54,7 +50,6 @@ export const ComparatorPage: React.FC = () => {
   const handleSelectOutcome = (outcome: OutcomeType) => {
     setActiveOutcome(outcome);
     setSelectedOutcome(outcome);
-    // Auto-select first sub-branch for this outcome
     const sector = evaluatedTree.outcomes[outcome];
     if (sector && sector.subBranches.length > 0) {
       setSelectedBranchId(sector.subBranches[0].id);
@@ -62,9 +57,7 @@ export const ComparatorPage: React.FC = () => {
   };
 
   const handleProceedToActionPlan = async () => {
-    setIsNavigating(true);
     try {
-      // Pick first sub-branch for this outcome if none selected
       const sector = evaluatedTree.outcomes[activeOutcome];
       const branchId = sector?.subBranches[0]?.id || null;
 
@@ -82,15 +75,12 @@ export const ComparatorPage: React.FC = () => {
       navigate(`/assess/action-plan${assessmentId ? `?id=${assessmentId}` : ''}`);
     } catch (err) {
       console.error('Error saving before Action Plan navigation:', err);
-      // Navigate anyway to avoid trapping user
       navigate(`/assess/action-plan${assessmentId ? `?id=${assessmentId}` : ''}`);
-    } finally {
-      setIsNavigating(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F4EFE2] text-[#0B0B0B] flex flex-col font-sans">
+    <div className="min-h-screen flex flex-col flex-1 bg-[#F4EFE2] text-[#0B0B0B] font-sans">
       {/* Top Header */}
       <header className="bg-[#F4EFE2] border-b-2 border-[#0B0B0B] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -121,38 +111,19 @@ export const ComparatorPage: React.FC = () => {
             </div>
           )}
 
-          {/* Navigation CTAs */}
+          {/* Navigation Links */}
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to={`/assess/decision-tree${assessmentId ? `?id=${assessmentId}` : ''}`}
-              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono font-bold"
+              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono font-bold whitespace-nowrap"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Matrix</span>
+              <span>Return to Matrix</span>
             </Link>
-
-            <button
-              type="button"
-              onClick={handleProceedToActionPlan}
-              disabled={isNavigating}
-              className="assessment-nav-btn bg-[#FFE600] text-[#0B0B0B] hover:bg-[#0B0B0B] hover:text-[#FFE600] text-xs py-1.5 px-3.5 shadow-[2px_2px_0px_#0B0B0B] flex items-center gap-1.5 font-mono font-bold cursor-pointer disabled:opacity-50"
-            >
-              {isNavigating ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <span>Action Plan</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </>
-              )}
-            </button>
 
             <Link
               to="/dashboard"
-              className="inline-flex items-center text-xs font-mono font-bold text-[#6C6659] hover:text-[#0B0B0B] py-1.5 px-2 transition-colors"
+              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3 font-mono font-bold whitespace-nowrap"
               title="Return to Dashboard"
             >
               <span>Dashboard</span>
@@ -176,6 +147,17 @@ export const ComparatorPage: React.FC = () => {
       <footer className="py-3 text-center font-mono text-[11px] text-[#6C6659] border-t-2 border-[#0B0B0B] bg-[#FFFDF5]">
         <span>R3VIVE Economic & Circular Trade-off Matrix • Truthful Break-Even Intelligence</span>
       </footer>
+
+      {/* Canvas HUD */}
+      <CanvasHUD />
     </div>
+  );
+};
+
+export const ComparatorPage: React.FC = () => {
+  return (
+    <CanvasProtocolProvider>
+      <ComparatorCanvasBody />
+    </CanvasProtocolProvider>
   );
 };

@@ -32,6 +32,12 @@ html, body {
   overflow-x: hidden;
 }
 
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 ::selection {
   background-color: #FFE600;
   color: #0B0B0B;

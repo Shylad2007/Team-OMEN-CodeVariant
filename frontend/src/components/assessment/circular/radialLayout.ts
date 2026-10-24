@@ -53,9 +53,9 @@ export function buildCircularGraphElements(
     } as CentralNodeData,
   });
 
-  // Radii metrics - compact circular structure
-  const R_OUTCOMES = 300; // Radius to 5 Outcomes
-  const R_BRANCHES = 530; // Radius to Sub-Branches
+  // Radii metrics - optimized compact circular structure (proportional and balanced)
+  const R_OUTCOMES = 225; // Radius to 5 Outcomes
+  const R_BRANCHES = 395; // Radius to Sub-Branches
 
   const outcomesList = Object.values(evaluatedTree.outcomes);
 

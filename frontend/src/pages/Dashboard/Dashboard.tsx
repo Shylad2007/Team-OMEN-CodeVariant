@@ -8,6 +8,7 @@ import { MyDecisionsSection } from '../../components/dashboard/MyDecisionsSectio
 import { ActionPlansSection } from '../../components/dashboard/ActionPlansSection';
 import { CircularPathways } from '../../components/dashboard/CircularPathways';
 import { DashboardFooter } from '../../components/dashboard/DashboardFooter';
+import { CanvasProtocolProvider, CanvasHUD } from '../../components/canvas';
 import './Dashboard.css';
 
 export const Dashboard: React.FC = () => {
@@ -60,32 +61,37 @@ export const Dashboard: React.FC = () => {
     'User';
 
   return (
-    <div className="dashboard-page retro-grid-pattern">
-      {/* Top Header & Account Navigation */}
-      <DashboardHeader
-        userDisplayName={userDisplayName}
-        userEmail={user.email}
-        onSignOut={handleSignOut}
-        isSigningOut={isSigningOut}
-      />
+    <CanvasProtocolProvider>
+      <div className="dashboard-page retro-grid-pattern min-h-screen flex flex-col flex-1">
+        {/* Top Header & Account Navigation */}
+        <DashboardHeader
+          userDisplayName={userDisplayName}
+          userEmail={user.email}
+          onSignOut={handleSignOut}
+          isSigningOut={isSigningOut}
+        />
 
-      {/* Main Dashboard Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Welcome & Primary Action Section */}
-        <WelcomeSection userDisplayName={userDisplayName} />
+        {/* Main Dashboard Content */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          {/* Welcome & Primary Action Section (Draggable Intake Token + Initialize Action Zone) */}
+          <WelcomeSection userDisplayName={userDisplayName} />
 
-        {/* My Decisions Section (Saved Circular Assessments) */}
-        <MyDecisionsSection />
+          {/* My Decisions Section (Draggable Vault Items + Multi-Zone Protocol Dock) */}
+          <MyDecisionsSection />
 
-        {/* Action Plans Section (Execution Roadmaps) */}
-        <ActionPlansSection />
+          {/* Action Plans Section (Execution Roadmaps) */}
+          <ActionPlansSection />
 
-        {/* Five Circular Outcomes Primer */}
-        <CircularPathways />
-      </main>
+          {/* Five Circular Outcomes Primer */}
+          <CircularPathways />
+        </main>
 
-      {/* Footer */}
-      <DashboardFooter />
-    </div>
+        {/* Footer */}
+        <DashboardFooter />
+
+        {/* Fixed Canvas Protocol HUD */}
+        <CanvasHUD />
+      </div>
+    </CanvasProtocolProvider>
   );
 };

@@ -1,12 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RotateCcw, AlertTriangle, Workflow } from 'lucide-react';
 import { useAssessment } from '../../context/AssessmentContext';
 import { evaluateCircularDecisionTree } from '../../components/assessment/circular/circularTreeData';
 import { CircularDecisionCanvas } from '../../components/assessment/circular/CircularDecisionCanvas';
+import {
+  CanvasProtocolProvider,
+  DraggableCard,
+  ActionZone,
+  CanvasHUD,
+  useCanvasProtocol,
+} from '../../components/canvas';
 import './Assessment.css';
 
-export const DecisionTreePage: React.FC = () => {
+/**
+ * Inner body of DecisionTreePage utilizing Canvas Protocol
+ */
+const DecisionTreeCanvasBody: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlAssessmentId = searchParams.get('id');
@@ -21,7 +31,7 @@ export const DecisionTreePage: React.FC = () => {
     loadAssessment,
   } = useAssessment();
 
-  const [isNavigating, setIsNavigating] = useState(false);
+  const { setStatusMessage } = useCanvasProtocol();
   const [actionError, setActionError] = useState<string | null>(null);
 
   // If URL has id, load that assessment on mount
@@ -44,7 +54,7 @@ export const DecisionTreePage: React.FC = () => {
     } else if (evaluatedTree.activeBranchId && !activeBranchId) {
       setActiveBranchId(evaluatedTree.activeBranchId);
     }
-  }, [contextBranchId, evaluatedTree.activeBranchId]);
+  }, [contextBranchId, evaluatedTree.activeBranchId, activeBranchId]);
 
   const activeSector = useMemo(() => {
     const sectors = Object.values(evaluatedTree.outcomes);
@@ -82,10 +92,10 @@ export const DecisionTreePage: React.FC = () => {
       selectedOutcome: matchingSector?.outcomeType || evaluatedTree.recommendedOutcome,
       recommendedOutcome: evaluatedTree.recommendedOutcome,
     });
+    setStatusMessage(`Active path pinned to ${matchingSector?.outcomeType.toUpperCase() || 'RECOMMENDED'}`);
   };
 
   const handleContinueToActionPlan = async () => {
-    setIsNavigating(true);
     setActionError(null);
 
     try {
@@ -104,13 +114,15 @@ export const DecisionTreePage: React.FC = () => {
         selectedBranchId: branchToSave,
       });
 
+      setStatusMessage('Decision committed. Transitioning to Action Plan Roadmap...');
       const targetId = savedId || assessmentId || urlAssessmentId;
       navigate(`/assess/action-plan${targetId ? `?id=${targetId}` : ''}`);
+      return true;
     } catch (err: any) {
       console.error('Failed to persist assessment before action plan:', err);
       setActionError(err.message || 'Failed to save assessment to cloud. Please try again.');
-    } finally {
-      setIsNavigating(false);
+      setStatusMessage('Failed to persist decision to cloud storage.');
+      return false;
     }
   };
 
@@ -151,11 +163,11 @@ export const DecisionTreePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen lg:max-h-screen lg:overflow-hidden flex flex-col bg-[#F4EFE2] text-[#0B0B0B] retro-grid-pattern overflow-x-hidden">
+    <div className="min-h-screen flex flex-col flex-1 bg-[#F4EFE2] text-[#0B0B0B] retro-grid-pattern overflow-x-hidden">
       {/* Top Header */}
       <header className="bg-[#F4EFE2] border-b-2 border-[#0B0B0B] sticky top-0 z-40 flex-none">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link to="/dashboard" className="flex items-center gap-2 group">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <Link to="/dashboard" className="flex items-center gap-2 group shrink-0">
             <div className="w-8 h-8 bg-[#FFE600] border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] flex items-center justify-center font-mono font-black text-sm group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-transform">
               R3
             </div>
@@ -172,7 +184,7 @@ export const DecisionTreePage: React.FC = () => {
           {/* Item Quick Tag */}
           <div className="hidden md:flex items-center gap-2 font-mono text-xs">
             <span className="text-[#6C6659]">EVALUATING:</span>
-            <span className="font-bold text-[#0B0B0B] px-2 py-0.5 bg-[#FFFDF5] border border-[#0B0B0B]">
+            <span className="font-bold text-[#0B0B0B] px-2 py-0.5 bg-[#FFFDF5] border border-[#0B0B0B] truncate max-w-[200px]">
               {data.itemName}
             </span>
             <span className="px-2 py-0.5 bg-[#FFE600] border border-[#0B0B0B] font-black uppercase text-[10px]">
@@ -181,7 +193,7 @@ export const DecisionTreePage: React.FC = () => {
           </div>
 
           {/* Navigation Controls */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleReset}
@@ -194,37 +206,17 @@ export const DecisionTreePage: React.FC = () => {
 
             <Link
               to={`/assess${assessmentId ? `?id=${assessmentId}` : ''}`}
-              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+              className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 whitespace-nowrap"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Edit Item</span>
             </Link>
-
-            {/* Primary Workflow Continuation CTA */}
-            <button
-              type="button"
-              onClick={handleContinueToActionPlan}
-              disabled={isNavigating}
-              className="assessment-nav-btn bg-[#FFE600] text-[#0B0B0B] hover:bg-[#0B0B0B] hover:text-[#FFE600] text-xs py-1.5 px-3.5 shadow-[2px_2px_0px_#0B0B0B] flex items-center gap-1.5 font-mono font-bold cursor-pointer disabled:opacity-50"
-            >
-              {isNavigating ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <span>Continue to Action Plan</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </>
-              )}
-            </button>
           </div>
         </div>
       </header>
 
       {/* Main Expansive Circular Graph Viewport */}
-      <main className="flex-1 w-full px-3 sm:px-4 md:px-6 py-2 flex flex-col min-h-0">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 md:px-6 py-3 flex flex-col min-h-0">
         {/* Save Error Alert Banner */}
         {actionError && (
           <div className="mb-2 p-2 px-3 bg-[#FFF5F5] border-2 border-[#DC2626] font-mono text-xs flex items-center justify-between gap-2 shadow-[2px_2px_0px_#DC2626] flex-none">
@@ -236,7 +228,6 @@ export const DecisionTreePage: React.FC = () => {
             <button
               type="button"
               onClick={handleContinueToActionPlan}
-              disabled={isNavigating}
               className="px-2.5 py-0.5 bg-[#DC2626] text-white hover:bg-[#0B0B0B] font-bold text-[10px] uppercase border border-[#0B0B0B]"
             >
               Retry
@@ -244,42 +235,62 @@ export const DecisionTreePage: React.FC = () => {
           </div>
         )}
 
-        {/* Intro Context Banner */}
-        <div className="mb-2 p-2 px-3 bg-[#FFFDF5] border-2 border-[#0B0B0B] font-mono text-xs flex flex-wrap items-center justify-between gap-2 shadow-[2px_2px_0px_#0B0B0B] flex-none">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="w-2.5 h-2.5 bg-[#10B25A] border border-[#0B0B0B] inline-block" />
-            <strong className="text-[#0B0B0B] text-[11px]">R3VIVE DECISION INTELLIGENCE:</strong>
-            <span className="text-[#544E43] text-[11px] hidden sm:inline">
-              5-Sector Radial Hierarchy • Grounded Multi-Criteria Analysis
-            </span>
-            {evaluatedTree.overallDataLimitations.length > 0 && (
-              <span className="text-[10px] bg-[#FFFBEB] text-[#B45309] px-2 py-0.5 border border-[#D97706]/50">
-                Notice: {evaluatedTree.overallDataLimitations.length} optional input(s) unspecified
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-[10.5px]">
-              <span className="text-[#6C6659]">Recommended:</span>
-              <span className="px-2 py-0.5 bg-[#10B25A] text-white font-black uppercase text-[10px] border border-[#0B0B0B]">
-                {evaluatedTree.recommendedOutcome} ({evaluatedTree.outcomes[evaluatedTree.recommendedOutcome].fitPercentage}%)
-              </span>
+        {/* Canvas Protocol Decision Dock (Replaces the prohibited primary button) */}
+        <div className="mb-3 p-3 bg-[#FFFDF5] border-3 border-[#0B0B0B] shadow-[4px_4px_0px_#0B0B0B] flex-none">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
+            {/* Draggable Active Decision Token */}
+            <div className="md:col-span-5 flex flex-col">
+              <DraggableCard
+                payload={{
+                  type: 'decision_node_token',
+                  id: `node-${activeSector.outcomeType}`,
+                  title: `${activeSector.outcomeType.toUpperCase()} PATHWAY`,
+                  subtitle: `Fit: ${activeSector.fitPercentage}% • ${data.itemName || 'Item'}`,
+                  badge: isUserDiverging ? 'USER PINNED' : 'RECOMMENDED',
+                  badgeColor: isUserDiverging ? 'bg-[#FFE600] text-[#0B0B0B]' : 'bg-[#10B25A] text-white',
+                  data: {
+                    outcome: activeSector.outcomeType,
+                    branchId: activeBranchId,
+                    assessmentId,
+                  },
+                }}
+                className="h-full"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 bg-[#10B25A] border border-[#0B0B0B] shrink-0" />
+                    <span className="font-mono text-xs sm:text-sm font-black text-[#0B0B0B] uppercase truncate">
+                      DECISION TOKEN: {activeSector.outcomeType}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] px-2 py-0.5 bg-[#FFE600] border border-[#0B0B0B] font-black shrink-0">
+                    {activeSector.fitPercentage}% FIT
+                  </span>
+                </div>
+                <p className="font-mono text-[11px] text-[#544E43] mt-1.5 truncate">
+                  {data.itemName ? `Item: ${data.itemName}` : 'Assessed item parameters'}
+                </p>
+              </DraggableCard>
             </div>
 
-            {isUserDiverging && (
-              <div className="flex items-center gap-1.5 text-[10.5px]">
-                <span className="text-[#6C6659]">User Path:</span>
-                <span className="px-2 py-0.5 bg-[#FFE600] text-[#0B0B0B] font-black uppercase text-[10px] border border-[#0B0B0B]">
-                  {activeSector.outcomeType}
-                </span>
-              </div>
-            )}
+            {/* Target Action Zone: Deploy Action Plan */}
+            <div className="md:col-span-7 flex flex-col">
+              <ActionZone
+                id="deploy-action-plan-zone"
+                label="Deploy Action Plan Roadmap"
+                hint="Drop active decision token here to commit pathway & unlock verified checklist"
+                accepts={['decision_node_token', 'review_verdict_token', 'intake_capsule']}
+                icon={<Workflow className="w-5 h-5 text-[#2A5BFF]" />}
+                activeColor="bg-[#2A5BFF]/10"
+                onDrop={handleContinueToActionPlan}
+                className="h-full"
+              />
+            </div>
           </div>
         </div>
 
         {/* Dedicated Circular Canvas */}
-        <div className="flex-1 w-full flex flex-col min-h-0">
+        <div className="flex-1 w-full h-[620px] lg:h-[calc(100vh-230px)] min-h-[520px] flex flex-col">
           <CircularDecisionCanvas
             tree={evaluatedTree}
             activeBranchId={activeBranchId}
@@ -290,9 +301,20 @@ export const DecisionTreePage: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="py-2.5 text-center font-mono text-[11px] text-[#6C6659] border-t-2 border-[#0B0B0B] bg-[#FFFDF5] flex-none">
-        <span>R3VIVE Radial Decision Engine • 5-Sector Circular Matrix • Genuine Dynamic Evaluation</span>
+      <footer className="py-2 text-center font-mono text-[10px] text-[#6C6659] border-t-2 border-[#0B0B0B] bg-[#FFFDF5] flex-none">
+        <span>R3VIVE Radial Decision Engine • Multi-Criteria Circular Navigation</span>
       </footer>
+
+      {/* Floating Canvas HUD */}
+      <CanvasHUD />
     </div>
+  );
+};
+
+export const DecisionTreePage: React.FC = () => {
+  return (
+    <CanvasProtocolProvider>
+      <DecisionTreeCanvasBody />
+    </CanvasProtocolProvider>
   );
 };

@@ -35,10 +35,10 @@ export const OutcomeSectorNode: React.FC<OutcomeSectorNodeProps> = ({ data }) =>
         w-[220px] bg-[#FFFDF5] border-2 border-[#0B0B0B] font-sans text-left relative cursor-pointer group transition-all
         ${
           isActive
-            ? 'ring-2 ring-[#0B0B0B] shadow-[4px_4px_0px_#0B0B0B] -translate-x-0.5 -translate-y-0.5'
+            ? 'ring-2 ring-[#0B0B0B] shadow-[5px_5px_0px_#0B0B0B] -translate-x-0.5 -translate-y-0.5'
             : isRecommended
-            ? 'shadow-[3px_3px_0px_#0B0B0B]'
-            : 'shadow-[2px_2px_0px_#0B0B0B] hover:shadow-[3px_3px_0px_#0B0B0B]'
+            ? 'shadow-[4px_4px_0px_#0B0B0B] hover:shadow-[5px_5px_0px_#0B0B0B] hover:-translate-x-0.5 hover:-translate-y-0.5'
+            : 'shadow-[3px_3px_0px_#0B0B0B] hover:shadow-[5px_5px_0px_#0B0B0B] hover:-translate-x-0.5 hover:-translate-y-0.5'
         }
       `}
     >

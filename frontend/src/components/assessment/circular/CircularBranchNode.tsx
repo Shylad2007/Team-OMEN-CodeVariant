@@ -29,11 +29,11 @@ export const CircularBranchNode: React.FC<CircularBranchNodeProps> = ({ data }) 
     <div
       onClick={handleClick}
       className={`
-        w-[210px] p-2 bg-[#FFFDF5] border font-sans text-left relative cursor-pointer transition-all
+        w-[205px] p-2 bg-[#FFFDF5] border-2 border-[#0B0B0B] font-sans text-left relative cursor-pointer transition-all
         ${
           isActive
-            ? 'border-[#0B0B0B] ring-2 ring-[#FFE600] shadow-[3px_3px_0px_#0B0B0B] -translate-x-0.5 -translate-y-0.5'
-            : 'border-[#0B0B0B]/70 shadow-[2px_2px_0px_#0B0B0B] hover:border-[#0B0B0B] hover:shadow-[3px_3px_0px_#0B0B0B]'
+            ? 'ring-2 ring-[#0B0B0B] shadow-[4px_4px_0px_#0B0B0B] -translate-x-0.5 -translate-y-0.5'
+            : 'shadow-[2px_2px_0px_#0B0B0B] hover:shadow-[4px_4px_0px_#0B0B0B] hover:-translate-x-0.5 hover:-translate-y-0.5'
         }
       `}
     >
