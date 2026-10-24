@@ -1,208 +1,92 @@
-# R3VIVE — Circular Decision Intelligence Platform
+# R3VIVE
 
 > **Rethink. Repair. Reimagine.**
 
-R3VIVE is an intelligent, open circular economy platform designed to eliminate premature waste and guide consumers, technicians, and organizations toward the most viable, sustainable lifecycle pathways for durable goods.
+An interactive circular decision-intelligence platform that guides people through practical, sustainable pathways for damaged or underutilized goods using the tactile **Canvas Action Protocol**.
+
+[![Live Demo](https://img.shields.io/badge/Live_Demo-r3vive.vercel.app-FFE600?style=for-the-badge&logo=vercel&logoColor=black)](https://r3vive-psbjfvrqy-psohanda007-2224.vercel.app/)
+[![React](https://img.shields.io/badge/React_19-TypeScript-2A5BFF?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-10B25A?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-Auth_%26_PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Gemini](https://img.shields.io/badge/Google_Gemini-AI_Guidance-orange?style=for-the-badge&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+
+🔗 **Live Application:** [https://r3vive-psbjfvrqy-psohanda007-2224.vercel.app/](https://r3vive-psbjfvrqy-psohanda007-2224.vercel.app/)
 
 ---
 
-## 1. The Problem We Aim to Solve
+## The Problem
 
-Every year, millions of tons of repairable consumer electronics, domestic appliances, furniture, and workshop tools are discarded into landfills or downcycled into scrap. This linear "take-make-waste" consumption model persists because consumers and technicians face:
-
-- **Diagnostic Information Asymmetry**: Users lack clear, accessible guidance on whether a malfunctioning item can be practically repaired.
-- **Obscure Economic Trade-offs**: Repair quotes are frequently weighed against the retail price of new units without transparent insight into total cost of ownership or component replacement viability.
-- **Overlooked Intermediate Strategies**: Valuable circular alternatives—such as secondary domestic reuse, upcycling/repurposing, or component harvesting—are rarely presented as structured options.
-- **Fragmented Recycling Logistics**: When an item truly reaches the end of its mechanical life, safe disposal and certified closed-loop recycling routes are confusing and opaque.
+When possessions malfunction or show signs of wear, most people face an unfair choice: decipher cryptic repair manuals, gamble on expensive contractor quotes, or send the item straight to a landfill. Without clear, accessible guidance on whether a product is safely repairable, economically viable to restore, or suitable for secondary use, valuable materials are discarded prematurely. R3VIVE replaces this guesswork with an intuitive, guided experience that clarifies lifecycle trade-offs before an item is thrown away.
 
 ---
 
-## 2. Our Proposed Solution
+## What We Built
 
-R3VIVE replaces guesswork with a **structured, explainable Circular Decision Engine**. By evaluating an item's condition, fault characteristics, age, economic ratios, and user priorities, R3VIVE synthesizes grounded recommendations across the **Five Circular Outcomes**:
+R3VIVE is an end-to-end circular decision-support engine. Users step through a structured diagnostic intake, evaluate economic break-evens, and explore outcomes arranged radially around their item.
+
+Instead of traditional passive forms and generic submit buttons, R3VIVE introduces the **Canvas Action Protocol**—a tactile, accessible interaction model where actions are physically represented as draggable **Tokens & Execution Capsules** and resolved inside interactive **Action Zones**. Every workflow transition—from pinning pathways to archiving action plans—is intentional, visual, and backed by full keyboard accessibility (`Space` to grab, `Tab` to cycle zones, `Enter` to drop, `Esc` to cancel).
+
+---
+
+## The 5 Circular Pathways
+
+Every assessed item is evaluated against five interconnected circular strategies:
 
 ```
-           [ REPAIR ]
-                │
-  [ RECYCLE ] ──┼── [ REUSE ]
-        │       │       │
-    [ REPLACE ] ┴ [ REPURPOSE ]
-```
-
-1. **Repair**: Component-level modular swaps, fastener fixes, and specialist bench overhauls to restore factory functionality.
-2. **Reuse**: Repositioning functional hardware into secondary domestic roles or transferring to peers and community charities.
-3. **Repurpose**: Upcycling sound structural carcasses, timber, or electro-mechanical sub-assemblies into creative functional assets.
-4. **Replace**: Targeted eco-upgrades (e.g., BEE 5-star inverter models) or certified refurbished swaps when legacy operation is severely inefficient.
-5. **Recycle**: Safe hazardous cell deposition (preventing battery fires) and certified closed-loop smelting to recover 95%+ of pure metallurgy.
-
----
-
-## 3. Core Features
-
-### Implemented & Foundational
-- **Responsive Retro-Terminal Design System**: Consistent high-contrast retro aesthetic featuring tactile borders, monospace metrics, and responsive viewport layouts.
-- **Diagnostic Simulator**: Interactive homepage simulator demonstrating real-time circular pathway routing across various item categories and fault conditions.
-- **Break-Even & Cost Comparator**: Financial model illustrating repair-to-replacement ratios, payback periods, and embodied carbon avoided.
-- **Interactive Outcomes Explorer**: Comprehensive breakdown of all five circular sectors with category-specific criteria and impact potential.
-
-### In Active Development (Subsequent Milestones)
-- **Guided 5-Stage Item Assessment**: Deep intake workflow covering item identity, physical defect grading, circumstances, and adaptive diagnostic questions.
-- **Radial React Flow Decision Matrix**: Circular interactive tree visualizing the assessed product at the center surrounded by 5 radial outcome sectors and sub-branches.
-- **Personalised Decision Intelligence**: Grounded multi-criteria scoring (Safety, Technical Feasibility, Economic Viability, Circular Impact, Priority Match) with honest missing-data handling.
-- **Gemini AI Workshop Guidance**: Contextual workshop precautions and technical tips powered by Gemini 3.8 Flash with deterministic fallback.
-- **Smart Action Plan & Workshop Checklist**: Step-by-step roadmap with interactive progress tracking, print-ready ink-efficient worksheets, and Supabase cloud sync.
-- **Authenticated Cloud Persistence**: Secure user accounts, Row Level Security (RLS) enforcement, and personal circular decision dashboard.
-
----
-
-## 4. Technology Stack
-
-### Frontend Architecture
-- **Framework**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool**: [Vite](https://vite.dev/) (with HMR and fast compilation)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) with custom retro brutalist theme extensions
-- **Routing**: [React Router v7](https://reactrouter.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Graph Visualization**: [@xyflow/react](https://reactflow.dev/) (React Flow)
-
-### Backend Architecture
-- **Runtime**: [Python 3.11+](https://www.python.org/)
-- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Async ASGI REST API)
-- **Server**: [Uvicorn](https://www.uvicorn.org/) (High-performance ASGI server)
-- **Validation**: [Pydantic v2](https://docs.pydantic.dev/)
-- **HTTP Client**: [HTTPX](https://www.python-httpx.org/)
-- **Generative AI SDK**: [google-genai](https://pypi.org/project/google-genai/) (Gemini 3.8 Flash)
-
-### Cloud Persistence & Security
-- **Database**: [Supabase](https://supabase.com/) (Managed PostgreSQL)
-- **Security**: PostgreSQL Row Level Security (RLS) policies enforcing strict user-ownership
-- **Authentication**: Supabase Auth (JWT bearer token verification with offline HMAC fallback)
-
----
-
-## 5. Repository Structure
-
-```
-R3VIVE/
-├── .env.example              # Unified environment configuration reference
-├── .gitignore                # Global git ignore rules (secrets, venvs, caches)
-├── README.md                 # Root project documentation
-├── backend/                  # FastAPI backend service
-│   ├── .env.example          # Backend environment variables template
-│   ├── requirements.txt      # Python dependencies
-│   ├── supabase_schema.sql   # PostgreSQL database schema and RLS policies
-│   ├── app/
-│   │   ├── auth.py           # JWT token verification and Supabase Auth
-│   │   ├── config.py         # App configuration and environment loaders
-│   │   ├── main.py           # FastAPI entry point, CORS, and health routes
-│   │   ├── routers/          # Route handlers (assessments, decision intelligence)
-│   │   └── schemas/          # Pydantic validation models
-│   └── tests/                # Automated backend test suite
-└── frontend/                 # React + TypeScript client application
-    ├── index.html            # HTML entry document
-    ├── package.json          # Frontend dependencies and scripts
-    ├── vite.config.ts        # Vite build and server configuration
-    ├── tsconfig.json         # TypeScript configuration
-    ├── public/               # Static assets, favicon, and SVG sprite definitions
-    └── src/
-        ├── main.tsx          # React application root
-        ├── App.tsx           # Router and root component setup
-        ├── index.css         # Global styles and Tailwind directives
-        ├── components/       # Reusable UI components
-        │   ├── home/         # Foundational homepage sections
-        │   ├── auth/         # Authentication modal and form elements
-        │   ├── assessment/   # Diagnostic intake and circular tree components
-        │   └── dashboard/    # User decisions management views
-        ├── context/          # React Context providers (AuthContext, AssessmentContext)
-        ├── pages/            # Application views (Home, Assess, Dashboard, Auth)
-        └── services/         # API client integration (FastAPI + Supabase)
+          ┌─────────────┐
+          │   REPAIR    │ ── Restore functionality via modular fixes & parts swaps
+          └─────────────┘
+                 │
+┌─────────────┐  ┼  ┌─────────────┐
+│   RECYCLE   │ ──┼── │    REUSE    │ ── Transfer intact goods to peers, charities, or secondary roles
+└─────────────┘  │  └─────────────┘
+                 │
+          ┌─────────────┐
+          │  REPURPOSE  │ ── Upcycle raw materials & carcasses into new functional items
+          └─────────────┘
+                 │
+          ┌─────────────┐
+          │   REPLACE   │ ── Upgrade to certified energy-efficient or refurbished models
+          └─────────────┘
 ```
 
 ---
 
-## 6. Quick Start & Setup Instructions
+## Core Features
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (v18.0 or higher)
-- [npm](https://www.npmjs.com/) (v9.0 or higher)
-- [Python](https://www.python.org/) (v3.11 or higher)
-- [Git](https://git-scm.com/)
-
----
-
-### Step 1: Clone Repository & Environment Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/Shylad2007/Team-OMEN-CodeVariant.git
-cd Team-OMEN-CodeVariant
-
-# Configure environment files
-cp .env.example frontend/.env
-cp backend/.env.example backend/.env
-```
-
-Edit `frontend/.env` and `backend/.env` with your Supabase project URL and anon public key. (Optional: configure `GEMINI_API_KEY` in `backend/.env` for real-time generative guidance).
+- **Interactive Canvas Action Protocol**: Replace standard button clicks with tactile card-and-zone manipulation. Drag execution capsules, decision tokens, and diagnostic badges into responsive drop targets with real-time drop validation and audio-haptic feedback.
+- **Radial Circular Decision Matrix**: Explore a collision-free circular graph powered by React Flow. The assessed product sits at the nucleus, surrounded by five color-coded outcome sectors and category-tailored sub-branches that highlight active recommendations dynamically.
+- **Dual-Engine Decision Intelligence**: A mathematical multi-criteria engine weighs safety constraints, repair economics, defect severity, and user urgency. Critical hazards (e.g., swollen lithium cells) automatically gate hazardous repair pathways and prioritize certified recycling.
+- **Contextual Gemini AI Workshop Guidance**: When generative AI is connected, Google Gemini provides item-specific workshop tips, safety cautions, and carbon insights. If offline or quota-limited, the system falls back seamlessly to verified deterministic rules.
+- **Repair vs. Replace Economic Comparator**: Side-by-side financial analysis factoring in quoted repair costs, replacement retail pricing, estimated lifespan extension, and carbon emissions diverted from manufacture.
+- **Smart Action Plans & Persistent Vault**: Step-by-step execution roadmaps with interactive progress tracking, ink-efficient print worksheets, and multi-item cloud sync via Supabase.
 
 ---
 
-### Step 2: Frontend Setup
+## Tech Stack
 
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start Vite development server
-npm run dev
-```
-
-The frontend application will be live at `http://localhost:5173`.
+| Domain | Technologies |
+| :--- | :--- |
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS (Neo-Brutalist design system), React Router v7, Lucide Icons |
+| **Interaction & Graph** | `@xyflow/react` (React Flow), Canvas Action Protocol (HTML5 Drag & Drop + Pointer Events + Keyboard A11y) |
+| **Backend API** | FastAPI, Python 3.11+, Uvicorn, Pydantic v2, HTTPX |
+| **AI Intelligence** | Google Gemini 2.5/3.6 via official `google-genai` SDK, LRU response cache, deterministic rule fallbacks |
+| **Data & Auth** | Supabase (PostgreSQL, Row-Level Security policies, JWT token authentication) |
+| **Deployment** | Vercel (Frontend SPA with direct route rewrites), Render (FastAPI Web Service) |
 
 ---
 
-### Step 3: Backend Setup (Optional for Full Stack)
+## Future Scope
 
-```bash
-cd backend
-
-# Create and activate virtual environment
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Start FastAPI development server
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-The API interactive Swagger documentation will be available at `http://127.0.0.1:8000/docs`.
+1. **Hyper-Local Repair & Intake Integration**: Connect action plan checklists directly to nearby independent repair cafes, tool libraries, and certified municipal e-waste drop-offs.
+2. **Computer Vision Defect Intake**: Allow users to snap photos of damaged components for automated wear-and-tear classification and component identification.
+3. **Verified Parts Marketplace**: Link specific repair steps to open-source hardware schematics, 3D-printable replacement brackets, and certified spare parts suppliers.
+4. **Aggregated Community Circularity Metrics**: Public dashboard tracking total kilograms of e-waste diverted, repair hours logged, and lifecycle CO₂ emissions saved across all users.
 
 ---
 
-## 7. Development & Verification
+## Team & Credits
 
-### Running Frontend Production Build
-```bash
-npm --prefix frontend run build
-```
+Built with pride for **CodeVariant — Build 01** by **Team OMEN**.
 
-### Running Backend Unit Tests
-```bash
-cd backend
-python -m unittest discover tests
-```
-
----
-
-## 8. License & Team
-
-Developed with pride for **CodeVariant Build 01** by **Team OMEN**.
-
-*Rethink. Repair. Reimagine.*
+*Every product deserves a second thought before a second life.*
