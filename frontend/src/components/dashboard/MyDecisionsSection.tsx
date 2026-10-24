@@ -1,11 +1,20 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Archive, Plus, ArrowUpRight, Trash2, RefreshCw, AlertCircle, Sparkles, Clock, CheckCircle2, Sliders, Edit3, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useAssessment } from '../../context/AssessmentContext';
 import { listUserAssessments, deleteAssessment, type AssessmentSummaryItem } from '../../services/assessmentApi';
 
 export const MyDecisionsSection: React.FC = () => {
   const { session, user } = useAuth();
+  const { startNewAssessment } = useAssessment();
+  const navigate = useNavigate();
+
+  const handleAddNewItem = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const freshId = startNewAssessment();
+    navigate(`/assess?id=${freshId}`);
+  };
   const [assessments, setAssessments] = useState<AssessmentSummaryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,13 +120,14 @@ export const MyDecisionsSection: React.FC = () => {
             </button>
           )}
 
-          <Link
-            to="/assess?new=true"
-            className="retro-btn text-xs py-2 px-3.5 font-mono font-bold flex items-center gap-1.5 shadow-[2px_2px_0px_#0B0B0B]"
+          <button
+            type="button"
+            onClick={handleAddNewItem}
+            className="retro-btn text-xs py-2 px-3.5 font-mono font-bold flex items-center gap-1.5 shadow-[2px_2px_0px_#0B0B0B] cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add New Item</span>
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -173,13 +183,14 @@ export const MyDecisionsSection: React.FC = () => {
               Create a free account or sign in to persist your assessment diagnostic reports, view circular trade-offs, and resume saved evaluations anytime.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                to="/assess?new=true"
-                className="retro-btn text-xs py-2 px-4 font-mono font-bold flex items-center gap-1.5"
+              <button
+                type="button"
+                onClick={handleAddNewItem}
+                className="retro-btn text-xs py-2 px-4 font-mono font-bold flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add New Item</span>
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -221,14 +232,15 @@ export const MyDecisionsSection: React.FC = () => {
             </div>
 
             {/* Entry Point */}
-            <Link
-              to="/assess?new=true"
-              className="retro-btn text-xs sm:text-sm py-2.5 px-5 font-mono font-bold flex items-center gap-2"
+            <button
+              type="button"
+              onClick={handleAddNewItem}
+              className="retro-btn text-xs sm:text-sm py-2.5 px-5 font-mono font-bold flex items-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Assess Your First Item</span>
               <ArrowUpRight className="w-4 h-4" />
-            </Link>
+            </button>
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from 'lucide-react';
 import type { AssessmentData, AssessmentStage } from '../../components/assessment/types';
@@ -29,17 +29,27 @@ export const Assessment: React.FC = () => {
 
   const [currentStage, setCurrentStage] = useState<AssessmentStage>(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const lastHandledIdRef = useRef<string | null>(null);
 
   // Ensure every assessment session has a dedicated unique ID and isolated state
   useEffect(() => {
+    // 1. If explicitly new or no ID is provided, initialize a fresh assessment
     if (isExplicitNew || !urlAssessmentId) {
       const freshId = startNewAssessment();
+      lastHandledIdRef.current = freshId;
       setSearchParams({ id: freshId }, { replace: true });
       setCurrentStage(1);
-    } else if (urlAssessmentId && urlAssessmentId !== assessmentId) {
-      loadAssessment(urlAssessmentId);
+      return;
     }
-  }, [urlAssessmentId, isExplicitNew, assessmentId, loadAssessment, startNewAssessment, setSearchParams]);
+
+    // 2. If an existing ID was requested in URL, load it if not already handled
+    if (urlAssessmentId && urlAssessmentId !== lastHandledIdRef.current) {
+      lastHandledIdRef.current = urlAssessmentId;
+      if (urlAssessmentId !== assessmentId) {
+        loadAssessment(urlAssessmentId);
+      }
+    }
+  }, [urlAssessmentId, isExplicitNew, startNewAssessment, loadAssessment, setSearchParams]);
 
   // Sync current stage if loaded assessment has a valid step
   useEffect(() => {

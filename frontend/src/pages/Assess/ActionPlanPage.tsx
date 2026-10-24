@@ -40,6 +40,7 @@ export const ActionPlanPage: React.FC = () => {
     setChecklistProgress,
     saveAssessment,
     loadAssessment,
+    startNewAssessment,
     isItemAssessed,
   } = useAssessment();
 
@@ -233,6 +234,12 @@ export const ActionPlanPage: React.FC = () => {
   };
 
   // Finalize and return to dashboard
+  const handleAssessAnother = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const freshId = startNewAssessment();
+    navigate(`/assess?id=${freshId}`);
+  };
+
   const handleFinalizeAndExit = async () => {
     setIsFinalizing(true);
     setFeedbackMessage(null);
@@ -982,14 +989,15 @@ export const ActionPlanPage: React.FC = () => {
             </Link>
 
             <div className="flex items-center gap-3 ml-auto flex-wrap">
-              <Link
-                to="/assess?new=true"
-                className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5"
+              <button
+                type="button"
+                onClick={handleAssessAnother}
+                className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5 cursor-pointer"
                 title="Evaluate another item"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Assess Another Item</span>
-              </Link>
+              </button>
 
               <button
                 type="button"

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAssessment } from '../../context/AssessmentContext';
 import { ArrowRight, Sparkles, Compass } from 'lucide-react';
 
 interface WelcomeSectionProps {
@@ -7,6 +8,14 @@ interface WelcomeSectionProps {
 }
 
 export const WelcomeSection: React.FC<WelcomeSectionProps> = ({ userDisplayName }) => {
+  const { startNewAssessment } = useAssessment();
+  const navigate = useNavigate();
+
+  const handleStartNew = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const freshId = startNewAssessment();
+    navigate(`/assess?id=${freshId}`);
+  };
   return (
     <section className="mb-12">
       <div className="dashboard-card dashboard-bracket p-6 sm:p-10 bg-[#FFFDF5]">
@@ -40,14 +49,15 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({ userDisplayName 
         {/* Action Row */}
         <div className="flex flex-wrap items-center gap-4 pt-4 border-t-2 border-[#0B0B0B]/15">
           {/* Primary Action Button */}
-          <Link
-            to="/assess?new=true"
-            className="retro-btn text-sm sm:text-base py-3.5 px-6 font-mono font-black flex items-center gap-2 group shadow-[4px_4px_0px_#0B0B0B] hover:shadow-[5px_5px_0px_#0B0B0B]"
+          <button
+            type="button"
+            onClick={handleStartNew}
+            className="retro-btn text-sm sm:text-base py-3.5 px-6 font-mono font-black flex items-center gap-2 group shadow-[4px_4px_0px_#0B0B0B] hover:shadow-[5px_5px_0px_#0B0B0B] cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-[#0B0B0B]" />
             <span>Assess an Item</span>
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-          </Link>
+          </button>
 
           {/* Secondary Action */}
           <Link

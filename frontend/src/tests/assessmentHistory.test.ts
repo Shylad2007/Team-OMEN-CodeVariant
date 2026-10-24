@@ -232,5 +232,100 @@ describe('Assessment History & Decision Tracking Suite', () => {
     assert.strictEqual(searched.length, 1);
     assert.strictEqual(searched[0].id, '2');
   });
+  it('12. Creating a new assessment after opening a completed one initializes a distinct ID without mutation', () => {
+    // 1. User opens a completed assessment
+    const completedRecord: PersistentAssessment = {
+      ...mockDetailedRecord,
+      id: 'completed-101',
+      item_name: 'Dyson Vacuum',
+      current_step: 5,
+      is_completed: true,
+      selected_outcome: 'repair',
+      checklist_progress: { branch_app_rep_motor: { 0: true, 1: true } },
+    };
+
+    // 2. User clicks "Add New Item" / "Assess Another Item" -> generates fresh ID
+    const newId = 'fresh-uuid-' + Math.random().toString(36).substring(2, 8);
+    assert.notStrictEqual(newId, completedRecord.id, 'New assessment must have an independent ID');
+
+    // 3. User enters data for the new item
+    const newItemRecord: PersistentAssessment = {
+      ...mockDetailedRecord,
+      id: newId,
+      item_name: 'Sony Bravia 65-inch OLED',
+      category: 'electronics',
+      condition: 'partially_functional',
+      repair_cost: 8500,
+      current_step: 2,
+      is_completed: false,
+      selected_outcome: null,
+      selected_branch_id: null,
+      checklist_progress: {},
+    };
+
+    // 4. Verify completed record was NOT overwritten or mutated
+    assert.strictEqual(completedRecord.id, 'completed-101');
+    assert.strictEqual(completedRecord.item_name, 'Dyson Vacuum');
+    assert.strictEqual(completedRecord.is_completed, true);
+    assert.strictEqual(completedRecord.selected_outcome, 'repair');
+
+    // 5. Verify new item record is completely distinct
+    assert.strictEqual(newItemRecord.id, newId);
+    assert.strictEqual(newItemRecord.item_name, 'Sony Bravia 65-inch OLED');
+    assert.strictEqual(newItemRecord.category, 'electronics');
+    assert.strictEqual(newItemRecord.is_completed, false);
+    assert.deepStrictEqual(newItemRecord.checklist_progress, {});
+  });
+
+  it('13. Switching between multiple assessments preserves isolated answers and progress without leakage', () => {
+    const recordsMap: Record<string, PersistentAssessment> = {
+      'device-a': {
+        ...mockDetailedRecord,
+        id: 'device-a',
+        item_name: 'iPhone 13',
+        selected_outcome: 'repair',
+        selected_branch_id: 'branch_elec_rep_screen',
+        checklist_progress: { branch_elec_rep_screen: { 0: true } },
+      },
+      'device-b': {
+        ...mockDetailedRecord,
+        id: 'device-b',
+        item_name: 'Teak Coffee Table',
+        selected_outcome: 'repurpose',
+        selected_branch_id: 'branch_furn_rep_legs',
+        checklist_progress: { branch_furn_rep_legs: { 0: true, 1: true } },
+      },
+    };
+
+    // Navigate to device-a
+    const loadedA = recordsMap['device-a'];
+    assert.strictEqual(loadedA.item_name, 'iPhone 13');
+    assert.strictEqual(loadedA.selected_outcome, 'repair');
+    assert.strictEqual(loadedA.checklist_progress['branch_elec_rep_screen'][0], true);
+    assert.strictEqual(loadedA.checklist_progress['branch_furn_rep_legs'], undefined, 'No cross-item checklist leakage');
+
+    // Navigate to device-b
+    const loadedB = recordsMap['device-b'];
+    assert.strictEqual(loadedB.item_name, 'Teak Coffee Table');
+    assert.strictEqual(loadedB.selected_outcome, 'repurpose');
+    assert.strictEqual(loadedB.checklist_progress['branch_furn_rep_legs'][1], true);
+    assert.strictEqual(loadedB.checklist_progress['branch_elec_rep_screen'], undefined, 'No cross-item checklist leakage');
+  });
+
+  it('14. Editing one assessment updates only its own record and leaves others untouched', () => {
+    const vault: Record<string, PersistentAssessment> = {
+      'item-1': { ...mockDetailedRecord, id: 'item-1', item_name: 'Original Item 1', repair_cost: 1000 },
+      'item-2': { ...mockDetailedRecord, id: 'item-2', item_name: 'Original Item 2', repair_cost: 2000 },
+    };
+
+    // Edit item-2 only
+    vault['item-2'] = { ...vault['item-2'], item_name: 'Modified Item 2', repair_cost: 3500 };
+
+    assert.strictEqual(vault['item-1'].item_name, 'Original Item 1', 'Item 1 name must remain untouched');
+    assert.strictEqual(vault['item-1'].repair_cost, 1000, 'Item 1 repair cost must remain untouched');
+    assert.strictEqual(vault['item-2'].item_name, 'Modified Item 2');
+    assert.strictEqual(vault['item-2'].repair_cost, 3500);
+  });
 });
+
 

@@ -139,6 +139,7 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [recommendedOutcome, setRecommendedOutcome] = useState<string | null>(null);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [isPersistedInCloud, setIsPersistedInCloud] = useState<boolean>(false);
 
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -178,6 +179,7 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const resetData = () => {
     setData(INITIAL_DATA);
     setAssessmentId(null);
+    setIsPersistedInCloud(false);
     setCurrentStep(1);
     setSelectedOutcome(null);
     setSelectedBranchId(null);
@@ -202,6 +204,7 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const newId = customId || generateAssessmentId();
     setData(INITIAL_DATA);
     setAssessmentId(newId);
+    setIsPersistedInCloud(false);
     setCurrentStep(1);
     setSelectedOutcome(null);
     setSelectedBranchId(null);
@@ -273,25 +276,48 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       try {
         if (currentToken && user) {
-          if (assessmentId) {
-            // Update existing assessment record (never duplicates)
-            const updatePayload = toDatabasePayload(mergedData, {
-              id: assessmentId,
-              userId: user.id,
-              currentStep: resolvedStep,
-              isCompleted: resolvedCompleted,
-              recommendedOutcome: resolvedRecommended,
-              selectedOutcome: resolvedSelectedOutcome,
-              selectedBranchId: resolvedBranchId,
-              checklistProgress: resolvedChecklist,
-            });
+          if (isPersistedInCloud && assessmentId) {
+            // Existing cloud record: update in database
+            try {
+              const updatePayload = toDatabasePayload(mergedData, {
+                id: assessmentId,
+                userId: user.id,
+                currentStep: resolvedStep,
+                isCompleted: resolvedCompleted,
+                recommendedOutcome: resolvedRecommended,
+                selectedOutcome: resolvedSelectedOutcome,
+                selectedBranchId: resolvedBranchId,
+                checklistProgress: resolvedChecklist,
+              });
 
-            await updateAssessment(assessmentId, updatePayload, currentToken);
-            setSaveStatus('saved');
-            setLastSavedAt(new Date());
-            return assessmentId;
+              await updateAssessment(assessmentId, updatePayload, currentToken);
+              setSaveStatus('saved');
+              setLastSavedAt(new Date());
+              return assessmentId;
+            } catch (updateErr: any) {
+              const msg = updateErr?.message || '';
+              // If record was not found in database (404), fallback to create
+              if (msg.includes('not found') || msg.includes('404')) {
+                const created = await createAssessment(mergedData, currentToken, {
+                  id: activeId,
+                  userId: user.id,
+                  currentStep: resolvedStep,
+                  isCompleted: resolvedCompleted,
+                  recommendedOutcome: resolvedRecommended,
+                  selectedOutcome: resolvedSelectedOutcome,
+                  selectedBranchId: resolvedBranchId,
+                  checklistProgress: resolvedChecklist,
+                });
+                setIsPersistedInCloud(true);
+                setAssessmentId(created.id);
+                setSaveStatus('saved');
+                setLastSavedAt(new Date());
+                return created.id;
+              }
+              throw updateErr;
+            }
           } else {
-            // Create new assessment record
+            // Genuinely new assessment: create new database record
             const created = await createAssessment(mergedData, currentToken, {
               id: activeId,
               userId: user.id,
@@ -303,6 +329,7 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               checklistProgress: resolvedChecklist,
             });
 
+            setIsPersistedInCloud(true);
             setAssessmentId(created.id);
             setSaveStatus('saved');
             setLastSavedAt(new Date());
@@ -332,7 +359,7 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw new Error(errMsg);
       }
     },
-    [session, user, data, assessmentId, currentStep, isCompleted, recommendedOutcome, selectedOutcome, selectedBranchId, checklistProgress]
+    [session, user, data, assessmentId, isPersistedInCloud, currentStep, isCompleted, recommendedOutcome, selectedOutcome, selectedBranchId, checklistProgress]
   );
 
   // Load Assessment by ID (resuming after refresh or from dashboard)
@@ -362,6 +389,7 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setSelectedOutcome(loadedSelOutcome);
         setSelectedBranchId(loadedBranchId);
         setChecklistProgress(loadedChecklist || {});
+        setIsPersistedInCloud(Boolean(currentToken));
         setSaveStatus('saved');
         setLastSavedAt(new Date(record.updated_at || Date.now()));
         return true;
