@@ -96,6 +96,8 @@ export const DraggableCard: React.FC<DraggableCardProps> = ({
   return (
     <div
       ref={cardRef}
+      id={payload.id}
+      data-card-id={payload.id}
       draggable={!disabled}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}

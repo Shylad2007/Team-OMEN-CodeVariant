@@ -153,8 +153,16 @@ export function toDatabasePayload(
     checklistProgress?: Record<string, Record<number, boolean>>;
   }
 ) {
+  // Clean frontend adaptive answers so internal metadata is separated
+  const cleanAdaptive: Record<string, string> = {};
+  for (const [k, v] of Object.entries(data.adaptiveAnswers || {})) {
+    if (!k.startsWith('_') && typeof v === 'string') {
+      cleanAdaptive[k] = v;
+    }
+  }
+
   const mergedAdaptive = {
-    ...(data.adaptiveAnswers || {}),
+    ...cleanAdaptive,
     ...(options?.checklistProgress !== undefined
       ? { _checklist_progress: options.checklistProgress }
       : {}),
@@ -204,6 +212,14 @@ export function fromDatabaseRecord(record: PersistentAssessment): {
   const extractedChecklist: Record<string, Record<number, boolean>> =
     (record as any).checklist_progress || rawAdaptive._checklist_progress || {};
 
+  // Clean adaptive answers so UI and state never receive internal non-string metadata
+  const cleanedAdaptive: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rawAdaptive)) {
+    if (!k.startsWith('_') && typeof v === 'string') {
+      cleanedAdaptive[k] = v;
+    }
+  }
+
   return {
     data: {
       itemName: record.item_name || '',
@@ -222,13 +238,13 @@ export function fromDatabaseRecord(record: PersistentAssessment): {
       budgetConstraint: (record.budget_constraint as any) || null,
       urgency: (record.urgency as any) || null,
       primaryPriority: (record.primary_priority as any) || null,
-      adaptiveAnswers: rawAdaptive,
+      adaptiveAnswers: cleanedAdaptive,
     },
     currentStep: record.current_step || 1,
     isCompleted: Boolean(record.is_completed),
-    recommendedOutcome: record.recommended_outcome,
-    selectedOutcome: record.selected_outcome,
-    selectedBranchId: record.selected_branch_id,
+    recommendedOutcome: typeof record.recommended_outcome === 'string' ? record.recommended_outcome : null,
+    selectedOutcome: typeof record.selected_outcome === 'string' ? record.selected_outcome : null,
+    selectedBranchId: typeof record.selected_branch_id === 'string' ? record.selected_branch_id : null,
     checklistProgress: extractedChecklist,
   };
 }

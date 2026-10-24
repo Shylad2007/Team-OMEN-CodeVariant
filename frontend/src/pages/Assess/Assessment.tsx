@@ -46,7 +46,7 @@ const AssessmentCanvasBody: React.FC = () => {
   // Ensure every assessment session has a dedicated unique ID and isolated state
   useEffect(() => {
     if (isExplicitNew || !urlAssessmentId) {
-      const freshId = startNewAssessment();
+      const freshId = startNewAssessment(urlAssessmentId || undefined);
       lastHandledIdRef.current = freshId;
       setSearchParams({ id: freshId }, { replace: true });
       setCurrentStage(1);

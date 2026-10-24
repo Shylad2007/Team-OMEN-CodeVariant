@@ -130,6 +130,8 @@ export const ActionZone: React.FC<ActionZoneProps> = ({
 
   return (
     <div
+      id={id}
+      data-zone-id={id}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

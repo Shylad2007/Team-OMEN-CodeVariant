@@ -239,22 +239,51 @@ const ActionPlanCanvasBody: React.FC = () => {
     }
   };
 
-  // Finalize and return to dashboard
-  const handleAssessAnother = (_e?: React.MouseEvent) => {
-    const freshId = startNewAssessment();
-    navigate(`/assess?id=${freshId}`);
-    return true;
-  };
-
-  const handleFinalizeAndExit = async () => {
+  // Drop handler: Archive current assessment and initialize clean next assessment
+  const handleAssessAnother = async (_payload?: any) => {
     setIsFinalizing(true);
     setFeedbackMessage(null);
     try {
+      // 1. Safely serialize and persist current action plan to vault
+      const safeOutcome = typeof activeOutcome === 'string' ? activeOutcome : 'reuse';
+      const safeBranch = typeof activeBranchId === 'string' ? activeBranchId : (activeBranch?.id || null);
+
       await saveAssessment(undefined, {
         currentStep: 5,
         isCompleted: true,
-        selectedOutcome: activeOutcome,
-        selectedBranchId: activeBranchId || activeBranch.id,
+        selectedOutcome: safeOutcome,
+        selectedBranchId: safeBranch,
+        checklistProgress,
+      });
+
+      // 2. Initialize a fresh assessment with isolated ID
+      const freshId = startNewAssessment();
+
+      // 3. Navigate cleanly to Stage 01 of the fresh assessment
+      navigate(`/assess?id=${freshId}&new=true`);
+      return true;
+    } catch (err: any) {
+      console.error('Failed to initialize next assessment:', err);
+      setFeedbackMessage(err.message || 'Failed to archive current assessment before starting next.');
+      return false;
+    } finally {
+      setIsFinalizing(false);
+    }
+  };
+
+  // Drop handler: Finalize and sync to vault
+  const handleFinalizeAndExit = async (_payload?: any) => {
+    setIsFinalizing(true);
+    setFeedbackMessage(null);
+    try {
+      const safeOutcome = typeof activeOutcome === 'string' ? activeOutcome : 'reuse';
+      const safeBranch = typeof activeBranchId === 'string' ? activeBranchId : (activeBranch?.id || null);
+
+      await saveAssessment(undefined, {
+        currentStep: 5,
+        isCompleted: true,
+        selectedOutcome: safeOutcome,
+        selectedBranchId: safeBranch,
         checklistProgress,
       });
       navigate('/dashboard#decisions');
@@ -526,7 +555,7 @@ const ActionPlanCanvasBody: React.FC = () => {
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#2A5BFF]" />
               <span className="text-[#0B0B0B]">
-                Reviewing Action Plan for <strong>{activeOutcome.toUpperCase()}</strong> pathway.
+                Reviewing Action Plan for <strong>{String(activeOutcome || '').toUpperCase()}</strong> pathway.
               </span>
             </div>
 
@@ -1071,12 +1100,12 @@ const ActionPlanCanvasBody: React.FC = () => {
               <div className="md:col-span-4 flex flex-col">
                 <ActionZone
                   id="assess-another-zone"
-                  label="Initialize Next Item"
+                  label={isFinalizing ? "Archiving & Launching..." : "Initialize Next Item"}
                   hint="Drop execution capsule here to archive progress and launch fresh assessment"
                   accepts={['action_plan_token', 'new_assessment_token']}
                   icon={<Plus className="w-5 h-5 text-[#2A5BFF]" />}
                   activeColor="bg-[#2A5BFF]/10"
-                  onDrop={() => handleAssessAnother()}
+                  onDrop={handleAssessAnother}
                   className="h-full"
                 />
               </div>

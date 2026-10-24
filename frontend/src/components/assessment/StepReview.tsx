@@ -187,10 +187,36 @@ export const StepReview: React.FC<StepReviewProps> = ({
           </div>
 
           <div className="space-y-3 font-mono text-xs">
-            {Object.keys(data.adaptiveAnswers).length > 0 ? (
-              Object.entries(data.adaptiveAnswers).map(([qId, val]) => {
+            {(() => {
+              const validEntries = Object.entries(data.adaptiveAnswers || {}).filter(
+                ([qId, val]) => !qId.startsWith('_') && val !== null && val !== undefined
+              );
+
+              if (validEntries.length === 0) {
+                return (
+                  <p className="text-[#6C6659]">
+                    Standard category questions checked.{' '}
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToStage(4)}
+                      className="text-[#2A5BFF] underline font-bold"
+                    >
+                      Inspect Stage 4 Questions →
+                    </button>
+                  </p>
+                );
+              }
+
+              return validEntries.map(([qId, val]) => {
                 const qObj = ADAPTIVE_QUESTIONS.find((q) => q.id === qId);
                 const optObj = qObj?.options.find((o) => o.value === val);
+                const displayVal =
+                  optObj?.label ||
+                  (typeof val === 'string'
+                    ? val
+                    : typeof val === 'object' && val !== null
+                    ? Object.keys(val).join(', ')
+                    : String(val));
 
                 return (
                   <div key={qId} className="p-3 bg-[#F4EFE2] border border-[#0B0B0B]">
@@ -198,23 +224,12 @@ export const StepReview: React.FC<StepReviewProps> = ({
                       {qObj?.title || qId}:
                     </span>
                     <strong className="text-[#0B0B0B] text-xs">
-                      {optObj?.label || val}
+                      {displayVal}
                     </strong>
                   </div>
                 );
-              })
-            ) : (
-              <p className="text-[#6C6659]">
-                Standard category questions checked.{' '}
-                <button
-                  type="button"
-                  onClick={() => onNavigateToStage(4)}
-                  className="text-[#2A5BFF] underline font-bold"
-                >
-                  Inspect Stage 4 Questions →
-                </button>
-              </p>
-            )}
+              });
+            })()}
           </div>
         </div>
       </div>

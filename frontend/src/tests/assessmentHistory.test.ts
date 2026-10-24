@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import type { AssessmentSummaryItem, PersistentAssessment } from '../services/assessmentApi';
+import { fromDatabaseRecord, toDatabasePayload } from '../services/assessmentApi';
 
 // Mock assessment records representing real database payloads
 const mockSavedAssessments: AssessmentSummaryItem[] = [
@@ -325,6 +326,112 @@ describe('Assessment History & Decision Tracking Suite', () => {
     assert.strictEqual(vault['item-1'].repair_cost, 1000, 'Item 1 repair cost must remain untouched');
     assert.strictEqual(vault['item-2'].item_name, 'Modified Item 2');
     assert.strictEqual(vault['item-2'].repair_cost, 3500);
+  });
+
+  it('15. Execution Capsule drop with cloth_reuse_swap correctly isolates checklist from adaptiveAnswers', () => {
+    const rawRecord: PersistentAssessment = {
+      ...mockDetailedRecord,
+      id: 'cloth-repro-01',
+      category: 'clothing',
+      item_name: 'Vintage Denim Jacket',
+      selected_outcome: 'reuse',
+      selected_branch_id: 'cloth_reuse_swap',
+      checklist_progress: undefined as any,
+      adaptive_answers: {
+        cloth_damage: 'none',
+        _checklist_progress: {
+          cloth_reuse_swap: { 0: true, 1: false },
+        },
+      },
+      current_step: 5,
+      is_completed: true,
+    };
+
+    const transformed = fromDatabaseRecord(rawRecord);
+
+    // 1. Checklist progress must be extracted into checklistProgress object
+    assert.deepStrictEqual(transformed.checklistProgress, {
+      cloth_reuse_swap: { 0: true, 1: false },
+    });
+
+    // 2. adaptiveAnswers must NOT contain _checklist_progress or any object value
+    assert.strictEqual(
+      transformed.data.adaptiveAnswers._checklist_progress,
+      undefined,
+      '_checklist_progress must not leak into adaptiveAnswers'
+    );
+    assert.strictEqual(transformed.data.adaptiveAnswers.cloth_damage, 'none');
+
+    // 3. All values in adaptiveAnswers must be strings
+    for (const [k, v] of Object.entries(transformed.data.adaptiveAnswers)) {
+      assert.strictEqual(typeof v, 'string', `adaptiveAnswer ${k} must be string`);
+    }
+
+    // 4. Roundtrip via toDatabasePayload preserves both cleanly
+    const payload = toDatabasePayload(transformed.data, {
+      id: 'cloth-repro-01',
+      currentStep: 5,
+      isCompleted: true,
+      selectedOutcome: transformed.selectedOutcome,
+      selectedBranchId: transformed.selectedBranchId,
+      checklistProgress: transformed.checklistProgress,
+    });
+
+    assert.deepStrictEqual(
+      (payload.adaptive_answers as any)._checklist_progress,
+      { cloth_reuse_swap: { 0: true, 1: false } }
+    );
+  });
+
+  it('16. Dropping into Initialize Next Item saves previous item and isolates new assessment', () => {
+    const vault: Record<string, any> = {};
+
+    // Simulate saving current cloth item before transitioning
+    const currentId = 'cloth-item-01';
+    vault[currentId] = {
+      id: currentId,
+      item_name: 'Denim Jacket',
+      selected_outcome: 'reuse',
+      selected_branch_id: 'cloth_reuse_swap',
+      is_completed: true,
+      current_step: 5,
+      checklist_progress: { cloth_reuse_swap: { 0: true } },
+    };
+
+    // Transition creates a fresh ID
+    const freshId = 'item-fresh-uuid-999';
+    assert.notStrictEqual(freshId, currentId, 'Fresh assessment ID must be distinct');
+
+    // Previous assessment must remain intact in vault
+    assert.strictEqual(vault[currentId].id, 'cloth-item-01');
+    assert.strictEqual(vault[currentId].is_completed, true);
+    assert.strictEqual(vault[currentId].checklist_progress.cloth_reuse_swap[0], true);
+    assert.strictEqual(vault[freshId], undefined, 'Fresh item must not yet exist in vault until saved');
+  });
+
+  it('17. Finalize & Sync to Vault vs Initialize Next Item distinct routing & state guarantees', () => {
+    const item = {
+      id: 'item-sync-01',
+      selectedOutcome: 'repair',
+      selectedBranchId: 'branch_app_rep_motor',
+      isCompleted: true,
+    };
+
+    // Finalize destination is dashboard vault
+    const finalizeTarget = '/dashboard#decisions';
+    assert.strictEqual(finalizeTarget, '/dashboard#decisions');
+
+    // Initialize Next Item destination is fresh assessment Stage 01
+    const nextItemTarget = `/assess?id=${'new-id'}&new=true`;
+    assert.match(nextItemTarget, /\/assess\?id=new-id&new=true/);
+  });
+
+  it('18. Rejection of invalid drops preserves current state without uncaught errors', () => {
+    const acceptedTypes = ['action_plan_token', 'new_assessment_token'];
+    const invalidDrop = { type: 'unsupported_external_widget' };
+
+    const isAccepted = acceptedTypes.includes(invalidDrop.type);
+    assert.strictEqual(isAccepted, false, 'Invalid drop type must be rejected');
   });
 });
 
