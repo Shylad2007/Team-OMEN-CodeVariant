@@ -16,6 +16,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,9 +26,20 @@ app.add_middleware(
 app.include_router(assessments.router)
 app.include_router(decision_intelligence.router)
 
+@app.get("/")
+async def root() -> Dict[str, Any]:
+    """Root endpoint for basic service detection and status."""
+    return {
+        "service": "r3vive-backend",
+        "status": "online",
+        "version": "1.0.0",
+        "health": "/health",
+    }
+
+@app.get("/health")
 @app.get("/api/health")
 async def health_check() -> Dict[str, Any]:
-    """Health check endpoint."""
+    """Health check endpoint accessible at /health and /api/health."""
     return {
         "status": "healthy",
         "service": "r3vive-backend",

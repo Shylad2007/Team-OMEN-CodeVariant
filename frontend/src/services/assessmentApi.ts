@@ -1,7 +1,12 @@
 import { supabase } from '../lib/supabase';
 import type { AssessmentData, ItemCategoryId, ConditionGradeId } from '../components/assessment/types';
 
-const API_BASE = 'http://127.0.0.1:8000/api/assessments';
+const env = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
+const RAW_API_URL: string = env?.VITE_API_URL || env?.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+const CLEAN_API_URL = RAW_API_URL.replace(/\/+$/, '');
+const API_BASE = CLEAN_API_URL.endsWith('/api/assessments')
+  ? CLEAN_API_URL
+  : `${CLEAN_API_URL}/api/assessments`;
 
 export interface PersistentAssessment {
   id: string;
