@@ -51,6 +51,37 @@ class DecisionIntelligenceTests(unittest.TestCase):
             data = res.json()
             self.assertTrue(any("swelling" in c.lower() or "lithium" in c.lower() for c in data["safety_cautions"]))
 
+    def test_non_hazardous_burners_and_plugs_avoid_false_alarms(self):
+        """Verify that stove burners, spark plugs, and regular battery items do not trigger false hazard alerts."""
+        with patch("app.routers.decision_intelligence.is_gemini_configured", return_value=False):
+            # Gas stove burner
+            payload_burner = {
+                "item_name": "Gas Cooktop 4-Burner",
+                "category": "appliances",
+                "condition": "partially_functional",
+                "reported_fault": "Left gas burner is clogged with grease and hard to light",
+                "recommended_outcome": "repair",
+                "selected_outcome": "repair",
+            }
+            res = self.client.post("/api/assessments/ai-guidance", json=payload_burner)
+            self.assertEqual(res.status_code, 200)
+            data = res.json()
+            self.assertFalse(any("CRITICAL HAZARD" in c for c in data["safety_cautions"]), "Stove burner must not trigger CRITICAL HAZARD")
+
+            # Lawn mower spark plug
+            payload_spark = {
+                "item_name": "Lawn Mower",
+                "category": "tools",
+                "condition": "partially_functional",
+                "reported_fault": "Engine sputters; fouled spark plug needs cleaning or swap",
+                "recommended_outcome": "repair",
+                "selected_outcome": "repair",
+            }
+            res = self.client.post("/api/assessments/ai-guidance", json=payload_spark)
+            self.assertEqual(res.status_code, 200)
+            data = res.json()
+            self.assertFalse(any("CRITICAL HAZARD" in c for c in data["safety_cautions"]), "Spark plug must not trigger CRITICAL HAZARD")
+
     def test_missing_costs_acknowledgement(self):
         """Scenario 2: Missing cost and lifespan information are not fabricated."""
         with patch("app.routers.decision_intelligence.is_gemini_configured", return_value=False):

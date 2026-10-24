@@ -48,13 +48,49 @@ class StructuredAiGuidance(BaseModel):
     cost_carbon_insight: str = Field(..., min_length=5)
 
 def detect_hazard(req: DecisionGuidanceRequest) -> bool:
-    """Detect safety-critical hazards that require mandatory deterministic precautions."""
+    """
+    Detect safety-critical hazards that require mandatory deterministic precautions.
+    Accurately detects: swollen/leaking batteries, thermal runaway, active smoke/fire,
+    dangerous electrical arcing, and toxic chemical/gas leaks.
+    Excludes false positives: cooktop/stove burners, spark plugs, sparkling aesthetics,
+    and regular battery maintenance.
+    """
     text = f"{req.reported_fault} {req.item_name} {req.condition}".lower()
-    hazard_terms = [
-        "swollen", "battery", "smoke", "burn", "spark", "exploded",
-        "fire", "leak", "puncture", "chemical", "thermal runaway"
-    ]
-    return any(term in text for term in hazard_terms)
+
+    # 1. Swollen / compromised battery cells
+    has_battery = "battery" in text or "batteries" in text or "cell" in text
+    has_swelling = any(w in text for w in ["swollen", "bulging", "bloated", "puffed", "expanded"])
+    if (has_battery and has_swelling) or any(k in text for k in ["thermal runaway", "battery acid", "battery leak"]):
+        return True
+
+    # 2. Fire, explosion, active combustion
+    if any(k in text for k in ["catching fire", "caught fire", "exploded", "explosion", "burst into flames", "electrical fire"]):
+        return True
+    if " fire " in f" {text} " and not any(k in text for k in ["firewall", "fire extinguisher", "fire pit", "firepit"]):
+        return True
+
+    # 3. Active smoke or burning smell (exclude gas/stove burners, cd/dvd burners, incense burners)
+    is_burner = any(k in text for k in ["burner", "burners"])
+    if any(k in text for k in ["smoke", "smoking", "fuming", "burning smell", "burnt smell"]):
+        return True
+    if any(k in text for k in ["burnt", "burning", "charred"]) and not is_burner:
+        if any(k in text for k in ["wire", "wiring", "pcb", "motor", "cable", "transformer"]):
+            return True
+
+    # 4. Dangerous electrical arcing / shock (exclude spark plug or sparkling)
+    is_spark_plug = "spark plug" in text or "sparkplug" in text
+    is_sparkle = "sparkle" in text or "sparkling" in text
+    has_spark = any(w in text for w in ["sparking", "sparks", "electrical arc", "arcing"]) and not is_spark_plug and not is_sparkle
+    if has_spark or any(k in text for k in ["electric shock", "exposed live wire"]):
+        return True
+
+    # 5. Toxic chemical, refrigerant, or gas leaks
+    if any(k in text for k in [
+        "chemical leak", "acid leak", "mercury leak", "refrigerant leak", "freon leak", "gas leak", "toxic fumes", "asbestos"
+    ]):
+        return True
+
+    return False
 
 def get_mandatory_safety_precautions(req: DecisionGuidanceRequest) -> List[str]:
     """Generates non-negotiable safety cautions based on deterministic hazard analysis."""

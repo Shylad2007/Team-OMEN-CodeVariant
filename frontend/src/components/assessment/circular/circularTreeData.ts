@@ -1,4 +1,4 @@
-import type { AssessmentData, ItemCategoryId } from '../types';
+import type { AssessmentData, ItemCategoryId, ConditionGradeId } from '../types';
 import type {
   OutcomeType,
   OutcomeViability,
@@ -57,24 +57,115 @@ export const OUTCOME_METADATA: Record<
 };
 
 /**
- * Checks whether user input signals a hazard (swollen battery, burning, smoke, fire risk).
+ * Detailed result of safety hazard inspection.
  */
-function detectHazard(data: AssessmentData): boolean {
+export interface HazardDetectionDetails {
+  isHazard: boolean;
+  hazardReason?: string;
+}
+
+/**
+ * Helper to determine if direct reuse is technically and practically eligible.
+ * Direct reuse is ONLY eligible when the hardware is operational or has only minor/mint cosmetic issues.
+ */
+export function isDirectReuseEligible(condition: ConditionGradeId | null | undefined): boolean {
+  return condition === 'mint_minor_issue';
+}
+
+/**
+ * Checks whether user input signals an authentic safety hazard.
+ * Accurately detects: swollen/leaking batteries, thermal events, smoke, combustion, dangerous electrical arcing, toxic leaks.
+ * Excludes false positives: gas/stove burners, spark plugs, sparkling aesthetics, and routine battery life degradation.
+ */
+export function detectHazardDetails(data: AssessmentData): HazardDetectionDetails {
   const faultLower = (data.reportedFault || '').toLowerCase();
   const nameLower = (data.itemName || '').toLowerCase();
   const adaptiveStr = JSON.stringify(data.adaptiveAnswers || {}).toLowerCase();
-  const allText = `${faultLower} ${nameLower} ${adaptiveStr}`;
+  const allText = `${nameLower} ${faultLower} ${adaptiveStr}`;
 
-  return (
-    allText.includes('swollen') ||
-    allText.includes('smoke') ||
-    allText.includes('burn') ||
-    allText.includes('spark') ||
-    allText.includes('exploded') ||
-    allText.includes('fire') ||
+  // 1. Swollen / compromised battery cells
+  const batteryMention = /\bbatter(y|ies|ypack)\b/.test(allText);
+  const swollenMention = /\b(swollen|bulging|bloated|puffed|expanded)\b/.test(allText);
+  if (
+    (batteryMention && swollenMention) ||
+    allText.includes('thermal runaway') ||
+    allText.includes('battery acid') ||
+    allText.includes('battery leak')
+  ) {
+    return {
+      isHazard: true,
+      hazardReason: 'Swollen, leaking, or thermally compromised battery detected. Risk of fire, toxic gas, or chemical burns.',
+    };
+  }
+
+  // 2. Active fire, catching fire, explosion
+  if (/\b(caught fire|catching fire|exploded|explosion)\b/.test(allText)) {
+    return {
+      isHazard: true,
+      hazardReason: 'Evidence of active fire, combustion, or internal explosion reported.',
+    };
+  }
+  if (/\b(fire|burst into flames)\b/.test(allText) && !/\b(firewall|fire extinguisher|fire pit|firepit)\b/.test(allText)) {
+    return {
+      isHazard: true,
+      hazardReason: 'Fire risk or combustion reported.',
+    };
+  }
+
+  // 3. Smoke or active burning smell (exclude gas/cooktop burners, dvd burners, incense burners)
+  const isBurnerAppliance = /\b(gas|stove|cooktop|oven|dvd|cd|incense|pellet)?\s*burner(s)?\b/.test(allText);
+  const hasSmokeOrBurningSmell = /\b(smoke|smoking|fuming|burning smell|burnt smell|electrical fire)\b/.test(allText);
+  if (hasSmokeOrBurningSmell) {
+    return {
+      isHazard: true,
+      hazardReason: 'Active smoke or burning smell detected, indicating electrical short-circuit or thermal damage.',
+    };
+  }
+  if (/\b(burnt|burning|charred)\b/.test(allText) && !isBurnerAppliance) {
+    if (/\b(wire|wiring|pcb|board|motor|cable|transformer)\b/.test(allText)) {
+      return {
+        isHazard: true,
+        hazardReason: 'Charred wiring, motor windings, or electrical components detected.',
+      };
+    }
+  }
+
+  // 4. Electrical arcing, shock, or dangerous sparks (exclude spark plug, sparkle, sparkling)
+  const hasSparkPlug = /\bspark\s*plug(s)?\b/.test(allText);
+  const hasSparkle = /\bsparkl(e|ing|er)\b/.test(allText);
+  const hasDangerousSpark = /\b(sparking|electrical arc|arcing)\b/.test(allText) && !hasSparkPlug && !hasSparkle;
+  if (hasDangerousSpark || allText.includes('electric shock') || allText.includes('exposed live wire')) {
+    return {
+      isHazard: true,
+      hazardReason: 'Dangerous electrical arcing, exposed live mains voltage, or electric shock hazard detected.',
+    };
+  }
+
+  // 5. Toxic chemical or refrigerant or gas leak (exclude normal water leak or coffee drip)
+  if (
     allText.includes('chemical leak') ||
-    allText.includes('gas leak')
-  );
+    allText.includes('acid leak') ||
+    allText.includes('mercury leak') ||
+    allText.includes('refrigerant leak') ||
+    allText.includes('freon leak') ||
+    allText.includes('gas leak') ||
+    allText.includes('toxic fumes') ||
+    allText.includes('asbestos')
+  ) {
+    return {
+      isHazard: true,
+      hazardReason: 'Hazardous gas, refrigerant, or chemical leak detected. Professional hazmat disposal required.',
+    };
+  }
+
+  return { isHazard: false };
+}
+
+/**
+ * Checks whether user input signals a hazard.
+ */
+export function detectHazard(data: AssessmentData): boolean {
+  return detectHazardDetails(data).isHazard;
 }
 
 /**
@@ -1747,21 +1838,23 @@ function generateCategorySubBranches(
 export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCircularTree {
   const category = data.category || 'other';
   const condition = data.condition;
-  const isHazard = detectHazard(data);
+  const hazardDetails = detectHazardDetails(data);
+  const isHazard = hazardDetails.isHazard;
   const subBranches = generateCategorySubBranches(category, data, isHazard);
 
   const isBrokenSeverely = condition === 'severe_structural_failure';
   const isBrokenNonFunctional = condition === 'broken_non_functional';
   const isMinorOrMint = condition === 'mint_minor_issue';
   const isPartiallyFunctional = condition === 'partially_functional';
+  const isBroken = isBrokenSeverely || isBrokenNonFunctional;
 
-  // Check data limitations honestly
+  // Check data limitations honestly without inventing figures
   const overallDataLimitations: string[] = [];
   const repairCostProvided = typeof data.repairCost === 'number' && !data.repairCostUnknown && data.repairCost > 0;
   const replacementCostProvided = typeof data.replacementCost === 'number' && !data.replacementCostUnknown && data.replacementCost > 0;
 
   if (!repairCostProvided) {
-    overallDataLimitations.push('Repair cost not specified by user; financial feasibility evaluated via category heuristics.');
+    overallDataLimitations.push('Repair cost not specified by user; financial feasibility evaluated via qualitative condition heuristics.');
   }
   if (!replacementCostProvided) {
     overallDataLimitations.push('Replacement cost not specified by user; relative purchase comparison cannot be verified.');
@@ -1772,132 +1865,138 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
 
   // 1. DIMENSION 1: SAFETY (0 - 100)
   const safetyScores: Record<OutcomeType, number> = {
-    repair: isHazard ? 15 : 95,
-    reuse: isHazard ? 10 : 90,
-    repurpose: isHazard ? 20 : 85,
+    repair: isHazard ? 10 : 95,
+    reuse: isHazard ? 5 : (isBroken ? 40 : (isPartiallyFunctional ? 65 : 95)),
+    repurpose: isHazard ? 15 : 85,
     replace: 95,
     recycle: 99,
   };
 
   // 2. DIMENSION 2: TECHNICAL FEASIBILITY (0 - 100)
+  // Hard Gate: Direct reuse is completely infeasible for broken/non-functional items
   const feasibilityScores: Record<OutcomeType, number> = {
     repair: 85,
-    reuse: 80,
+    reuse: isDirectReuseEligible(condition) ? 95 : 10,
     repurpose: 75,
     replace: 90,
     recycle: 95,
   };
 
   if (isBrokenSeverely) {
-    feasibilityScores.repair = 35;
-    feasibilityScores.reuse = 20;
+    feasibilityScores.repair = 25; // Severe physical destruction
+    feasibilityScores.reuse = 10;  // Strictly impossible
     feasibilityScores.repurpose = 85;
     feasibilityScores.replace = 95;
     feasibilityScores.recycle = 95;
   } else if (isBrokenNonFunctional) {
-    feasibilityScores.repair = 75;
-    feasibilityScores.reuse = 40;
+    feasibilityScores.repair = 85;
+    feasibilityScores.reuse = 10;  // Cannot reuse broken hardware without intervention
     feasibilityScores.repurpose = 80;
     feasibilityScores.replace = 90;
     feasibilityScores.recycle = 85;
   } else if (isPartiallyFunctional) {
     feasibilityScores.repair = 92;
-    feasibilityScores.reuse = 80;
+    feasibilityScores.reuse = 50;  // Degraded utility
     feasibilityScores.repurpose = 75;
     feasibilityScores.replace = 75;
     feasibilityScores.recycle = 60;
   } else if (isMinorOrMint) {
     feasibilityScores.repair = 98;
     feasibilityScores.reuse = 95;
-    feasibilityScores.repurpose = 60;
-    feasibilityScores.replace = 60;
-    feasibilityScores.recycle = 40;
+    feasibilityScores.repurpose = 40; // Unnecessary dismantling
+    feasibilityScores.replace = 45;   // Avoidable replacement
+    feasibilityScores.recycle = 20;   // Inappropriate destruction
   }
 
-  // 3. DIMENSION 3: ECONOMIC VIABILITY (0 - 100, or null if missing)
+  // 3. DIMENSION 3: ECONOMIC VIABILITY (0 - 100, or null if unverified)
+  let costRatio: number | null = null;
+  if (repairCostProvided && replacementCostProvided) {
+    costRatio = (data.repairCost as number) / (data.replacementCost as number);
+  }
+
   let economicScores: Record<OutcomeType, number | null> = {
     repair: null,
-    reuse: 95, // Reuse is always high economic viability (zero new outlay)
-    repurpose: 80,
+    reuse: isDirectReuseEligible(condition) ? 95 : 10,
+    repurpose: null,
     replace: null,
     recycle: 50,
   };
 
-  if (repairCostProvided && replacementCostProvided) {
-    const costRatio = (data.repairCost as number) / (data.replacementCost as number);
-    if (costRatio <= 0.30) {
-      // Very cheap repair compared to buying new
+  if (costRatio !== null) {
+    if (costRatio <= 0.35) {
+      // Exceptionally cost-effective repair (<= 35% of replacement)
       economicScores.repair = 95;
       economicScores.replace = 40;
       economicScores.repurpose = 70;
-    } else if (costRatio <= 0.60) {
-      // Moderate repair
-      economicScores.repair = 80;
-      economicScores.replace = 65;
+    } else if (costRatio <= 0.55) {
+      // Favorable repair meeting 50% circular rule
+      economicScores.repair = 85;
+      economicScores.replace = 60;
       economicScores.repurpose = 75;
-    } else if (costRatio <= 0.85) {
-      // Expensive repair
-      economicScores.repair = 50;
-      economicScores.replace = 85;
+    } else if (costRatio <= 0.75) {
+      // Borderline repair
+      economicScores.repair = 55;
+      economicScores.replace = 80;
       economicScores.repurpose = 80;
     } else {
-      // Uneconomical repair (repair costs more than 85% of replacement)
+      // Uneconomical repair (> 75% of replacement)
       economicScores.repair = 25;
       economicScores.replace = 95;
       economicScores.repurpose = 85;
     }
   } else if (repairCostProvided && !replacementCostProvided) {
     economicScores.repair = (data.repairCost as number) < 3000 ? 85 : 60;
+    economicScores.repurpose = 75;
   }
 
   // 4. DIMENSION 4: CIRCULAR & ENVIRONMENTAL IMPACT (0 - 100)
-  // Circular hierarchy: Reuse (95) > Repair (90) > Repurpose (80) > Recycle (65) > Replace (35-60)
+  // Standard Circular Hierarchy: Reuse (98) > Repair (90) > Repurpose (82) > Recycle (68) > Replace (45)
   const circularScores: Record<OutcomeType, number> = {
     repair: 90,
-    reuse: 98,
-    repurpose: 82,
-    replace: 45,
-    recycle: 68,
+    reuse: isBroken ? 15 : 98,
+    repurpose: isMinorOrMint ? 45 : 82,
+    replace: isMinorOrMint ? 25 : 45,
+    recycle: isMinorOrMint ? 20 : 68,
   };
 
-  // If old appliance > 10 yrs, replace gets better circular score due to massive energy efficiency
-  if (category === 'appliances' && (data.age === '5_to_10_years' || data.age === 'over_10_years')) {
+  // If old appliance or electronics > 5-10 yrs, replace gains efficiency credit
+  if ((category === 'appliances' || category === 'electronics') && (data.age === '5_to_10_years' || data.age === 'over_10_years')) {
     circularScores.replace = 75;
   }
 
   // 5. DIMENSION 5: USER ALIGNMENT (0 - 100)
   const userScores: Record<OutcomeType, number> = {
     repair: 75,
-    reuse: 75,
+    reuse: isBroken ? 10 : 75,
     repurpose: 70,
     replace: 70,
     recycle: 60,
   };
 
   if (data.primaryPriority === 'save_money') {
-    userScores.reuse += 20;
+    if (isDirectReuseEligible(condition)) userScores.reuse += 20;
     userScores.repair += 15;
     userScores.replace -= 35;
     userScores.repurpose += 10;
   } else if (data.primaryPriority === 'reduce_waste') {
-    userScores.reuse += 20;
+    if (isDirectReuseEligible(condition)) userScores.reuse += 20;
     userScores.repair += 20;
     userScores.repurpose += 15;
     userScores.recycle += 10;
     userScores.replace -= 30;
   } else if (data.primaryPriority === 'extend_lifespan') {
     userScores.repair += 25;
-    userScores.reuse += 15;
+    if (isDirectReuseEligible(condition)) userScores.reuse += 15;
     userScores.replace -= 20;
   } else if (data.primaryPriority === 'convenience') {
     userScores.replace += 25;
     userScores.repair += (isMinorOrMint ? 10 : -10);
-    userScores.repurpose -= 25; // Repurposing is time-intensive
+    userScores.repurpose -= 25; // Repurposing is maker-intensive
   }
 
   if (data.urgency === 'urgent') {
     userScores.replace += 20;
-    userScores.reuse += 15;
+    if (isDirectReuseEligible(condition)) userScores.reuse += 15;
     userScores.repair -= 10;
     userScores.repurpose -= 30;
   } else if (data.urgency === 'flexible') {
@@ -1906,7 +2005,7 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
   }
 
   if (data.budgetConstraint === 'minimal') {
-    userScores.reuse += 20;
+    if (isDirectReuseEligible(condition)) userScores.reuse += 20;
     userScores.repair += 10;
     userScores.replace -= 40;
   } else if (data.budgetConstraint === 'flexible') {
@@ -1914,13 +2013,34 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
     userScores.repair += 10;
   }
 
-  // 6. SYNTHESIZE MULTI-CRITERIA FIT SCORES (0 - 100)
+  // 6. SYNTHESIZE MULTI-CRITERIA FIT SCORES WITH HARD GATES (0 - 100)
   const calculateTotalFit = (outcome: OutcomeType): number => {
-    // If hazard, Recycle dominates for critical safety
+    // GATE 1: Safety Hazard - Mandatory Certified Safe Recycling
     if (isHazard) {
       if (outcome === 'recycle') return 98;
       if (outcome === 'replace') return 85;
-      return 15;
+      if (outcome === 'repurpose') return 15;
+      if (outcome === 'repair') return 10;
+      return 5; // reuse strictly disqualified
+    }
+
+    // GATE 2: Ineligible Direct Reuse on Broken / Non-Functional Hardware
+    if (outcome === 'reuse' && !isDirectReuseEligible(condition)) {
+      if (isPartiallyFunctional) return 50;
+      return 12; // Broken items cannot be directly reused
+    }
+
+    // GATE 3: Severe Structural Failure + Uneconomical Repair
+    if (outcome === 'repair' && isBrokenSeverely && costRatio !== null && costRatio >= 0.75) {
+      return 25; // Strictly unfavorable
+    }
+
+    // GATE 4: Mint Items Disincentivize Replacement / Destruction
+    if (outcome === 'replace' && isMinorOrMint) {
+      return 35;
+    }
+    if (outcome === 'recycle' && isMinorOrMint) {
+      return 20;
     }
 
     const safety = safetyScores[outcome];
@@ -1930,7 +2050,7 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
 
     let totalScore = 0;
     if (economicScores[outcome] !== null) {
-      // When economics are known: Safety 25%, Feasibility 25%, Economics 25%, Circular 15%, User 10%
+      // Known economics: Safety 20%, Feasibility 25%, Economics 25%, Circular 15%, User 15%
       totalScore =
         safety * 0.20 +
         feasibility * 0.25 +
@@ -1938,12 +2058,12 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
         circular * 0.15 +
         userAlign * 0.15;
     } else {
-      // When economics are unknown: Safety 25%, Feasibility 35%, Circular 20%, User 20%
+      // Unknown economics: Safety 25%, Feasibility 35%, Circular 20%, User 20%
       totalScore =
-        safety * 0.20 +
+        safety * 0.25 +
         feasibility * 0.35 +
         circular * 0.20 +
-        userAlign * 0.25;
+        userAlign * 0.20;
     }
 
     // Strict boundary clamping
@@ -1958,13 +2078,25 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
     recycle: calculateTotalFit('recycle'),
   };
 
-  // Sort outcomes descending by fit percentage
+  // 7. DETERMINISTIC CIRCULAR HIERARCHY TIE-BREAKER
+  // Circular preference: Reuse > Repair > Repurpose > Replace > Recycle
+  // Safety preference: Recycle > Replace > Repurpose > Repair > Reuse
+  const priorityRank: Record<OutcomeType, number> = isHazard
+    ? { recycle: 5, replace: 4, repurpose: 3, repair: 2, reuse: 1 }
+    : { reuse: 5, repair: 4, repurpose: 3, replace: 2, recycle: 1 };
+
   const allOutcomes: OutcomeType[] = ['repair', 'reuse', 'repurpose', 'replace', 'recycle'];
-  const rankingOrder = [...allOutcomes].sort((a, b) => scores[b] - scores[a]);
+  const rankingOrder = [...allOutcomes].sort((a, b) => {
+    const diff = scores[b] - scores[a];
+    if (Math.abs(diff) > 0.001) {
+      return diff;
+    }
+    return priorityRank[b] - priorityRank[a];
+  });
   const recommendedOutcome = rankingOrder[0];
 
   const getViability = (out: OutcomeType, score: number): OutcomeViability => {
-    if (isHazard && (out === 'repair' || out === 'reuse')) return 'hazardous';
+    if (isHazard && (out === 'repair' || out === 'reuse' || out === 'repurpose')) return 'hazardous';
     if (out === recommendedOutcome) return 'recommended';
     if (score >= 75) return 'viable';
     if (score >= 50) return 'alternative';
@@ -1975,60 +2107,82 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
   const getComparativeRationale = (out: OutcomeType): string => {
     if (isHazard) {
       if (out === 'recycle') {
-        return 'Critical recommendation due to reported hazardous warning (swelling/thermal event). Immediate certified safe disposal is required.';
+        return `Critical safety recommendation: ${hazardDetails.hazardReason || 'Hazardous thermal, chemical, or combustion condition detected'}. Immediate certified safe disposal/recycling is mandated.`;
       }
-      return 'Unfavorable due to chemical or thermal hazard risks that make DIY handling unsafe.';
+      if (out === 'replace') {
+        return 'Viable purchase pathway after retired hazardous hardware is safely turned over to certified recyclers.';
+      }
+      return `Disqualified from DIY handling or reuse due to active safety hazard: ${hazardDetails.hazardReason || 'Hazard detected'}.`;
     }
 
     if (out === recommendedOutcome) {
       if (out === 'repair') {
-        return `Ranks #1 because the item has salvageable physical condition (${condition?.replace(/_/g, ' ') || 'assessed'}) and isolated component failure. Repairing retains embodied carbon while minimizing financial outlay.`;
+        return `Ranks #1 because the item has salvageable physical condition (${condition?.replace(/_/g, ' ') || 'assessed'}) and isolated defect. Repairing retains embodied manufacturing carbon while minimizing financial outlay.`;
       }
       if (out === 'reuse') {
-        return `Ranks #1 because the item remains operational or near-functional. Reusing or donating requires zero manufacturing resources and zero capital expense.`;
+        return `Ranks #1 because the item remains operational with only minor cosmetic wear. Direct reuse or donation requires zero manufacturing energy and zero capital expenditure.`;
       }
       if (out === 'repurpose') {
-        return `Ranks #1 because structural or cosmetic damage impairs primary operation, but durable subcomponents provide exceptional upcycling and utility value.`;
+        return `Ranks #1 because physical damage makes primary repair uneconomical, but intact durable materials and sub-assemblies offer outstanding upcycling and maker utility.`;
       }
       if (out === 'replace') {
-        return `Ranks #1 because the combination of advanced age (${data.age || 'legacy'}), severe structural failure, and high repair quotes makes replacement more economical and efficient.`;
+        return `Ranks #1 because severe structural failure (${condition?.replace(/_/g, ' ') || 'assessed'}) combined with uneconomical repair quotes makes modern energy-efficient replacement the most reliable and cost-effective pathway.`;
       }
       if (out === 'recycle') {
-        return `Ranks #1 because the hardware has reached complete end of mechanical life. Closed-loop smelting recovers up to 95% of strategic raw materials.`;
+        return `Ranks #1 because hardware has reached end-of-life with no viable repair or upcycling route. Closed-loop smelting recovers up to 95% of strategic raw materials.`;
       }
     }
 
-    // For secondary outcomes:
+    // Secondary outcomes rationales:
     if (out === 'repair') {
-      if (isBrokenSeverely) return 'Ranks lower because severe structural failure makes component repair technically complex and uneconomical.';
-      if (repairCostProvided && replacementCostProvided && (data.repairCost as number) / (data.replacementCost as number) > 0.7) {
-        return `Ranks lower because repair quote (₹${data.repairCost?.toLocaleString('en-IN')}) exceeds 70% of replacement cost.`;
+      if (isBrokenSeverely) {
+        return 'Ranks lower because severe structural failure makes component repair technically complex and commercially uneconomical.';
+      }
+      if (costRatio !== null && costRatio >= 0.75) {
+        return `Ranks lower because repair quote (₹${data.repairCost?.toLocaleString('en-IN')}) exceeds 75% of replacement cost, failing the 50% circular feasibility rule.`;
+      }
+      if (isMinorOrMint) {
+        return 'Viable for minor maintenance, but direct reuse requires zero tools or expenditure if cosmetic wear is acceptable.';
       }
       return 'Viable alternative, but ranked behind the primary recommendation based on user priority and condition grade.';
     }
     if (out === 'reuse') {
-      if (isBrokenNonFunctional || isBrokenSeverely) return 'Ranks lower because the item is non-functional in its current state without intervention.';
-      return 'Strong circular alternative if user prefers immediate redistribution over personal repair.';
+      if (isBroken) {
+        return 'Disqualified from direct reuse because non-functional or severely damaged items cannot be put into active service or donated without prior repair.';
+      }
+      if (isPartiallyFunctional) {
+        return 'Ranks lower because degraded performance requires technical adjustment before reliable redeployment.';
+      }
+      return 'Strong circular alternative if user prefers immediate redistribution over personal retention.';
     }
     if (out === 'repurpose') {
-      return 'Viable option if user enjoys hands-on maker upcycling, but ranked secondary to preserving primary functionality.';
+      if (isMinorOrMint) {
+        return 'Disfavored because repurposing or dismantling an operational item destroys working utility.';
+      }
+      if (data.primaryPriority === 'convenience' || data.urgency === 'urgent') {
+        return 'Ranks lower because creative upcycling requires maker tools, manual labor, and discretionary time.';
+      }
+      return 'Viable option if user enjoys hands-on upcycling, but ranked secondary to preserving primary functionality.';
     }
     if (out === 'replace') {
       if (isMinorOrMint || isPartiallyFunctional) {
-        return 'Ranks lower because discarding functional hardware incurs avoidable carbon and financial expenditure.';
+        return 'Ranks lower because discarding functional or easily fixable hardware incurs avoidable carbon debt and capital outlay.';
       }
-      return 'Alternative pathway if immediate modern reliability or warranty protection is preferred over repair.';
+      return 'Alternative pathway if immediate modern reliability and warranty protection are preferred over repair.';
     }
     if (out === 'recycle') {
-      return 'Last resort in circular hierarchy; reserved for when all repair and upcycling options are exhausted.';
+      if (isMinorOrMint) {
+        return 'Disqualified because shredding or smelting an operational item represents unnecessary material loss.';
+      }
+      return 'Last resort in circular hierarchy; reserved for when all repair, reuse, and repurpose options are fully exhausted.';
     }
 
-    return 'Evaluated against multi-criteria decision framework.';
+    return 'Evaluated against multi-criteria circular decision framework.';
   };
 
   // Primary verdict synthesis
   const primaryVerdictRationale = isHazard
-    ? 'CRITICAL SAFETY ALERT: Evidence of thermal swelling or hazardous failure detected. Certified safe recycling/disposal is strongly advised over personal handling.'
+    ? `CRITICAL SAFETY ALERT: ${hazardDetails.hazardReason || 'Hazard detected'}. Certified safe recycling is mandated over personal handling.`
     : `Algorithm recommends ${recommendedOutcome.toUpperCase()} (${scores[recommendedOutcome]}% match) based on verified ${category} diagnostic rules, item condition (${condition?.replace(/_/g, ' ') || 'assessed'}), and stated ${data.primaryPriority?.replace(/_/g, ' ') || 'circular'} priority.`;
 
   // Build sector records
@@ -2042,8 +2196,8 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
       summary: `Restore operational integrity via modular component swap or skilled bench service.`,
       keyDrivers: [
         isBrokenSeverely ? 'High structural challenge' : 'Preserves core functional assembly',
-        repairCostProvided && replacementCostProvided
-          ? `Cost ratio: ${Math.round(((data.repairCost as number) / (data.replacementCost as number)) * 100)}% of new replacement`
+        costRatio !== null
+          ? `Cost ratio: ${Math.round(costRatio * 100)}% of new replacement`
           : 'Lowers manufacturing footprint vs replacement',
         'Avoids embodied carbon emissions',
       ],
@@ -2078,7 +2232,7 @@ export function evaluateCircularDecisionTree(data: AssessmentData): EvaluatedCir
         circularImpact: circularScores.reuse,
         userAlignment: Math.max(10, Math.min(100, userScores.reuse)),
       },
-      dataLimitations: [],
+      dataLimitations: isDirectReuseEligible(condition) ? [] : ['Direct reuse barred: item requires repair before redeployment.'],
       subBranches: subBranches.reuse,
     },
     repurpose: {
