@@ -8,6 +8,7 @@ import {
   deleteAssessment,
   fromDatabaseRecord,
   toDatabasePayload,
+  generateAssessmentId,
 } from '../services/assessmentApi';
 
 const INITIAL_DATA: AssessmentData = {
@@ -69,6 +70,7 @@ interface AssessmentContextType {
   setChecklistProgress: React.Dispatch<React.SetStateAction<Record<string, Record<number, boolean>>>>;
   updateData: (updates: Partial<AssessmentData>) => void;
   resetData: () => void;
+  startNewAssessment: (customId?: string) => string;
   saveAssessment: (
     overrides?: SaveAssessmentOptions,
     workflowState?: {
@@ -196,6 +198,31 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const startNewAssessment = useCallback((customId?: string): string => {
+    const newId = customId || generateAssessmentId();
+    setData(INITIAL_DATA);
+    setAssessmentId(newId);
+    setCurrentStep(1);
+    setSelectedOutcome(null);
+    setSelectedBranchId(null);
+    setRecommendedOutcome(null);
+    setIsCompleted(false);
+    setChecklistProgress({});
+    setSaveStatus('idle');
+    setSaveError(null);
+    setLastSavedAt(null);
+    try {
+      sessionStorage.setItem(STORAGE_ID_KEY, newId);
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DATA));
+      sessionStorage.removeItem(STORAGE_OUTCOME_KEY);
+      sessionStorage.removeItem(STORAGE_BRANCH_KEY);
+      sessionStorage.removeItem(STORAGE_CHECKLIST_KEY);
+    } catch {
+      // ignore
+    }
+    return newId;
+  }, []);
+
   const isItemAssessed = Boolean(data.itemName.trim() && data.category && data.condition);
 
   // Save or Update Assessment
@@ -212,10 +239,6 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     ): Promise<string | null> => {
       const currentToken = session?.access_token;
-      if (!currentToken || !user) {
-        // Unauthenticated users only save to local session
-        return null;
-      }
 
       // Extract workflow parameters from either overrides or workflowState
       const resolvedStep = workflowState?.currentStep ?? overrides?.currentStep ?? currentStep;
@@ -226,13 +249,6 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const resolvedChecklist = workflowState?.checklistProgress ?? overrides?.checklistProgress ?? checklistProgress;
 
       const mergedData = { ...data, ...overrides };
-      if (!mergedData.itemName.trim() || !mergedData.category || !mergedData.condition) {
-        // Incomplete item cannot be saved to database yet
-        return null;
-      }
-
-      setSaveStatus('saving');
-      setSaveError(null);
 
       // Keep local state in sync
       if (resolvedSelectedOutcome !== undefined) setSelectedOutcome(resolvedSelectedOutcome);
@@ -242,28 +258,60 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (resolvedStep !== undefined) setCurrentStep(resolvedStep);
       if (resolvedChecklist !== undefined) setChecklistProgress(resolvedChecklist);
 
+      const activeId = assessmentId || generateAssessmentId();
+      if (!assessmentId) {
+        setAssessmentId(activeId);
+      }
+
+      if (!mergedData.itemName.trim() || !mergedData.category || !mergedData.condition) {
+        // Incomplete item cannot be saved to database yet, but preserve activeId
+        return activeId;
+      }
+
+      setSaveStatus('saving');
+      setSaveError(null);
+
       try {
-        if (assessmentId) {
-          // Update existing assessment record (never duplicates)
-          const updatePayload = toDatabasePayload(mergedData, {
-            id: assessmentId,
-            userId: user.id,
-            currentStep: resolvedStep,
-            isCompleted: resolvedCompleted,
-            recommendedOutcome: resolvedRecommended,
-            selectedOutcome: resolvedSelectedOutcome,
-            selectedBranchId: resolvedBranchId,
-            checklistProgress: resolvedChecklist,
-          });
+        if (currentToken && user) {
+          if (assessmentId) {
+            // Update existing assessment record (never duplicates)
+            const updatePayload = toDatabasePayload(mergedData, {
+              id: assessmentId,
+              userId: user.id,
+              currentStep: resolvedStep,
+              isCompleted: resolvedCompleted,
+              recommendedOutcome: resolvedRecommended,
+              selectedOutcome: resolvedSelectedOutcome,
+              selectedBranchId: resolvedBranchId,
+              checklistProgress: resolvedChecklist,
+            });
 
-          await updateAssessment(assessmentId, updatePayload, currentToken);
-          setSaveStatus('saved');
-          setLastSavedAt(new Date());
-          return assessmentId;
+            await updateAssessment(assessmentId, updatePayload, currentToken);
+            setSaveStatus('saved');
+            setLastSavedAt(new Date());
+            return assessmentId;
+          } else {
+            // Create new assessment record
+            const created = await createAssessment(mergedData, currentToken, {
+              id: activeId,
+              userId: user.id,
+              currentStep: resolvedStep,
+              isCompleted: resolvedCompleted,
+              recommendedOutcome: resolvedRecommended,
+              selectedOutcome: resolvedSelectedOutcome,
+              selectedBranchId: resolvedBranchId,
+              checklistProgress: resolvedChecklist,
+            });
+
+            setAssessmentId(created.id);
+            setSaveStatus('saved');
+            setLastSavedAt(new Date());
+            return created.id;
+          }
         } else {
-          // Create new assessment record
-          const created = await createAssessment(mergedData, currentToken, {
-            userId: user.id,
+          // Unauthenticated / guest flow: persists as independent local assessment
+          const created = await createAssessment(mergedData, undefined, {
+            id: activeId,
             currentStep: resolvedStep,
             isCompleted: resolvedCompleted,
             recommendedOutcome: resolvedRecommended,
@@ -271,16 +319,15 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             selectedBranchId: resolvedBranchId,
             checklistProgress: resolvedChecklist,
           });
-
           setAssessmentId(created.id);
           setSaveStatus('saved');
           setLastSavedAt(new Date());
           return created.id;
         }
       } catch (err: any) {
-        console.error('Failed to save assessment to Supabase:', err);
+        console.error('Failed to save assessment:', err);
         setSaveStatus('error');
-        const errMsg = err.message || 'Failed to save record to cloud';
+        const errMsg = err.message || 'Failed to save record';
         setSaveError(errMsg);
         throw new Error(errMsg);
       }
@@ -291,8 +338,8 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Load Assessment by ID (resuming after refresh or from dashboard)
   const loadAssessment = useCallback(
     async (id: string): Promise<boolean> => {
+      if (!id) return false;
       const currentToken = session?.access_token;
-      if (!currentToken) return false;
 
       setSaveStatus('saving');
       try {
@@ -309,16 +356,14 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         setData(loadedData);
         setAssessmentId(record.id);
-        setCurrentStep(loadedStep);
+        setCurrentStep(loadedStep || 1);
         setIsCompleted(loadedCompleted);
         setRecommendedOutcome(loadedRecOutcome);
         setSelectedOutcome(loadedSelOutcome);
         setSelectedBranchId(loadedBranchId);
-        if (loadedChecklist) {
-          setChecklistProgress(loadedChecklist);
-        }
+        setChecklistProgress(loadedChecklist || {});
         setSaveStatus('saved');
-        setLastSavedAt(new Date(record.updated_at));
+        setLastSavedAt(new Date(record.updated_at || Date.now()));
         return true;
       } catch (err: any) {
         console.error('Failed to load assessment:', err);
@@ -334,8 +379,6 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const deleteAssessmentRecord = useCallback(
     async (id: string): Promise<boolean> => {
       const currentToken = session?.access_token;
-      if (!currentToken) return false;
-
       try {
         await deleteAssessment(id, currentToken);
         if (assessmentId === id) {
@@ -370,6 +413,7 @@ export const AssessmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setChecklistProgress,
         updateData,
         resetData,
+        startNewAssessment,
         saveAssessment,
         loadAssessment,
         deleteAssessmentRecord,

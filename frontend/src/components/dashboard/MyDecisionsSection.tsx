@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Archive, Plus, ArrowUpRight, Trash2, RefreshCw, AlertCircle, Sparkles, Clock, CheckCircle2, Sliders } from 'lucide-react';
+import { Archive, Plus, ArrowUpRight, Trash2, RefreshCw, AlertCircle, Sparkles, Clock, CheckCircle2, Sliders, Edit3, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { listUserAssessments, deleteAssessment, type AssessmentSummaryItem } from '../../services/assessmentApi';
 
@@ -10,22 +10,17 @@ export const MyDecisionsSection: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'in_progress' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchAssessments = useCallback(async () => {
-    if (!session?.access_token) {
-      setLoading(false);
-      setAssessments([]);
-      return;
-    }
-
     try {
       setLoading(true);
       setError(null);
-      const items = await listUserAssessments(session.access_token);
+      const items = await listUserAssessments(session?.access_token);
       setAssessments(items);
     } catch (err: any) {
       console.error('Failed to load user assessments:', err);
-      // If table doesn't exist yet, we keep assessments empty rather than showing broken UI
       if (err.message?.includes('schema cache') || err.message?.includes('not found')) {
         setAssessments([]);
       } else {
@@ -117,11 +112,11 @@ export const MyDecisionsSection: React.FC = () => {
           )}
 
           <Link
-            to="/assess"
-            className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-[#0B0B0B] hover:text-[#2A5BFF] transition-colors py-1 px-2 border-b-2 border-[#0B0B0B] hover:border-[#2A5BFF] w-fit"
+            to="/assess?new=true"
+            className="retro-btn text-xs py-2 px-3.5 font-mono font-bold flex items-center gap-1.5 shadow-[2px_2px_0px_#0B0B0B]"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>New Assessment</span>
+            <span>Add New Item</span>
           </Link>
         </div>
       </div>
@@ -164,8 +159,8 @@ export const MyDecisionsSection: React.FC = () => {
         </div>
       )}
 
-      {/* Unauthenticated Invitation State */}
-      {!loading && !error && !user && (
+      {/* Unauthenticated Invitation State (when no local decisions exist) */}
+      {!loading && !error && !user && assessments.length === 0 && (
         <div className="dashboard-card dashboard-bracket p-8 sm:p-10 text-center bg-[#FFFDF5]">
           <div className="max-w-md mx-auto flex flex-col items-center">
             <div className="w-14 h-14 bg-[#F4EFE2] border-2 border-[#0B0B0B] shadow-[3px_3px_0px_#0B0B0B] flex items-center justify-center mb-4">
@@ -179,11 +174,11 @@ export const MyDecisionsSection: React.FC = () => {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
-                to="/assess"
+                to="/assess?new=true"
                 className="retro-btn text-xs py-2 px-4 font-mono font-bold flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Start Assessment</span>
+                <span>Add New Item</span>
               </Link>
             </div>
           </div>
@@ -227,7 +222,7 @@ export const MyDecisionsSection: React.FC = () => {
 
             {/* Entry Point */}
             <Link
-              to="/assess"
+              to="/assess?new=true"
               className="retro-btn text-xs sm:text-sm py-2.5 px-5 font-mono font-bold flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -238,10 +233,84 @@ export const MyDecisionsSection: React.FC = () => {
         </div>
       )}
 
-      {/* Populated Saved Decisions Grid */}
+      {/* Assessment Selector & Filter Bar */}
       {!loading && !error && assessments.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {assessments.map((item) => {
+        <>
+          {!user && (
+            <div className="mb-4 p-3 bg-[#FFFDF5] border border-[#0B0B0B] font-mono text-xs text-[#544E43] flex items-center justify-between gap-3 shadow-[2px_2px_0px_#0B0B0B]">
+              <span><strong>Guest Session:</strong> Items are saved in this browser. Sign in anytime to sync across devices.</span>
+              <Link to="/login" className="font-bold underline text-[#0B0B0B] hover:text-[#2A5BFF]">Sign In</Link>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6 font-mono text-xs">
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => setActiveFilter('all')}
+                className={`px-3 py-1.5 border border-[#0B0B0B] font-bold transition-colors ${
+                  activeFilter === 'all'
+                    ? 'bg-[#0B0B0B] text-[#FFE600] shadow-[2px_2px_0px_#2A5BFF]'
+                    : 'bg-[#FFFDF5] text-[#0B0B0B] hover:bg-[#F4EFE2]'
+                }`}
+              >
+                All ({assessments.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter('in_progress')}
+                className={`px-3 py-1.5 border border-[#0B0B0B] font-bold transition-colors ${
+                  activeFilter === 'in_progress'
+                    ? 'bg-[#0B0B0B] text-[#FFE600] shadow-[2px_2px_0px_#2A5BFF]'
+                    : 'bg-[#FFFDF5] text-[#0B0B0B] hover:bg-[#F4EFE2]'
+                }`}
+              >
+                In Progress ({assessments.filter((a) => !a.is_completed && a.current_step < 5).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter('completed')}
+                className={`px-3 py-1.5 border border-[#0B0B0B] font-bold transition-colors ${
+                  activeFilter === 'completed'
+                    ? 'bg-[#0B0B0B] text-[#FFE600] shadow-[2px_2px_0px_#2A5BFF]'
+                    : 'bg-[#FFFDF5] text-[#0B0B0B] hover:bg-[#F4EFE2]'
+                }`}
+              >
+                Completed ({assessments.filter((a) => a.is_completed || a.current_step >= 5).length})
+              </button>
+            </div>
+
+            {/* Item Search / Selector */}
+            <div className="relative flex-1 max-w-xs">
+              <Search className="w-3.5 h-3.5 text-[#6C6659] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search items by name or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-[#FFFDF5] border border-[#0B0B0B] text-xs font-mono text-[#0B0B0B] placeholder-[#8A8477] focus:outline-none focus:ring-1 focus:ring-[#0B0B0B]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {assessments
+              .filter((item) => {
+                if (activeFilter === 'in_progress') return !item.is_completed && item.current_step < 5;
+                if (activeFilter === 'completed') return item.is_completed || item.current_step >= 5;
+                return true;
+              })
+              .filter((item) => {
+                if (!searchQuery.trim()) return true;
+                const q = searchQuery.toLowerCase();
+                return (
+                  item.item_name.toLowerCase().includes(q) ||
+                  (item.category && item.category.toLowerCase().includes(q)) ||
+                  (item.brand_model && item.brand_model.toLowerCase().includes(q))
+                );
+              })
+              .map((item) => {
             const activeOutcome = item.selected_outcome || item.recommended_outcome;
 
             return (
@@ -308,6 +377,15 @@ export const MyDecisionsSection: React.FC = () => {
                       {/* Compact Secondary Actions Toolbar */}
                       <div className="flex items-center gap-1.5">
                         <Link
+                          to={`/assess?id=${item.id}`}
+                          className="flex-1 py-1.5 px-2 bg-[#FFFDF5] hover:bg-[#FFE600] border border-[#0B0B0B] text-center font-mono text-[11px] font-bold text-[#0B0B0B] shadow-[1px_1px_0px_#0B0B0B] transition-colors flex items-center justify-center gap-1"
+                          title="Edit assessment answers"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </Link>
+
+                        <Link
                           to={`/assess/decision-tree?id=${item.id}`}
                           className="flex-1 py-1.5 px-2 bg-[#FFFDF5] hover:bg-[#FFE600] border border-[#0B0B0B] text-center font-mono text-[11px] font-bold text-[#0B0B0B] shadow-[1px_1px_0px_#0B0B0B] transition-colors"
                           title="Inspect Decision Matrix"
@@ -359,8 +437,9 @@ export const MyDecisionsSection: React.FC = () => {
                 </div>
               </div>
             );
-          })}
-        </div>
+            })}
+          </div>
+        </>
       )}
     </section>
   );

@@ -41,7 +41,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({ userDisplayName 
         <div className="flex flex-wrap items-center gap-4 pt-4 border-t-2 border-[#0B0B0B]/15">
           {/* Primary Action Button */}
           <Link
-            to="/assess"
+            to="/assess?new=true"
             className="retro-btn text-sm sm:text-base py-3.5 px-6 font-mono font-black flex items-center gap-2 group shadow-[4px_4px_0px_#0B0B0B] hover:shadow-[5px_5px_0px_#0B0B0B]"
           >
             <Sparkles className="w-4 h-4 text-[#0B0B0B]" />

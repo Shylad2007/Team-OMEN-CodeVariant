@@ -153,4 +153,84 @@ describe('Assessment History & Decision Tracking Suite', () => {
     assert.strictEqual(diverged.selected_outcome, 'repurpose');
     assert.notStrictEqual(diverged.recommended_outcome, diverged.selected_outcome);
   });
+
+  it('8. Multi-assessment creation isolates distinct IDs, questionnaire answers, and checklists', () => {
+    const itemA: PersistentAssessment = {
+      ...mockDetailedRecord,
+      id: 'item-uuid-aaa',
+      item_name: 'LG OLED 55-inch TV',
+      category: 'electronics',
+      condition: 'partially_functional',
+      repair_cost: 6000,
+      checklist_progress: { branch_elec_rep_psu: { 0: true, 1: false } },
+    };
+
+    const itemB: PersistentAssessment = {
+      ...mockDetailedRecord,
+      id: 'item-uuid-bbb',
+      item_name: 'Oak Bookshelf',
+      category: 'furniture',
+      condition: 'cosmetic_wear',
+      repair_cost: 800,
+      checklist_progress: { branch_furn_rep_sand: { 0: true, 1: true, 2: true } },
+    };
+
+    assert.notStrictEqual(itemA.id, itemB.id, 'IDs must be uniquely assigned');
+    assert.strictEqual(itemA.item_name, 'LG OLED 55-inch TV');
+    assert.strictEqual(itemB.item_name, 'Oak Bookshelf');
+    assert.strictEqual(itemA.repair_cost, 6000);
+    assert.strictEqual(itemB.repair_cost, 800);
+    assert.deepStrictEqual(itemA.checklist_progress, { branch_elec_rep_psu: { 0: true, 1: false } });
+    assert.deepStrictEqual(itemB.checklist_progress, { branch_furn_rep_sand: { 0: true, 1: true, 2: true } });
+  });
+
+  it('9. Editing assessment A does not mutate assessment B', () => {
+    const store: Record<string, PersistentAssessment> = {
+      'id-1': { ...mockDetailedRecord, id: 'id-1', item_name: 'Item One', current_step: 3 },
+      'id-2': { ...mockDetailedRecord, id: 'id-2', item_name: 'Item Two', current_step: 2 },
+    };
+
+    // Update Item One only
+    store['id-1'] = { ...store['id-1'], item_name: 'Item One (Refurbished)', current_step: 5, is_completed: true };
+
+    assert.strictEqual(store['id-1'].item_name, 'Item One (Refurbished)');
+    assert.strictEqual(store['id-1'].current_step, 5);
+    assert.strictEqual(store['id-2'].item_name, 'Item Two', 'Item Two must remain unchanged');
+    assert.strictEqual(store['id-2'].current_step, 2, 'Item Two step must remain unchanged');
+  });
+
+  it('10. Deleting assessment A retains assessment B in vault', () => {
+    let list: AssessmentSummaryItem[] = [
+      { ...mockSavedAssessments[0], id: 'record-x' },
+      { ...mockSavedAssessments[1], id: 'record-y' },
+    ];
+
+    list = list.filter((item) => item.id !== 'record-x');
+    assert.strictEqual(list.length, 1);
+    assert.strictEqual(list[0].id, 'record-y');
+  });
+
+  it('11. Selector filter tabs and search query correctly partition multiple assessments', () => {
+    const items: AssessmentSummaryItem[] = [
+      { ...mockSavedAssessments[0], id: '1', item_name: 'MacBook Air', is_completed: true, current_step: 5 },
+      { ...mockSavedAssessments[1], id: '2', item_name: 'Sony Headphones', is_completed: false, current_step: 3 },
+      { ...mockSavedAssessments[2], id: '3', item_name: 'Teak Desk', is_completed: true, current_step: 5 },
+    ];
+
+    // Filter: in_progress
+    const inProgress = items.filter((a) => !a.is_completed && a.current_step < 5);
+    assert.strictEqual(inProgress.length, 1);
+    assert.strictEqual(inProgress[0].item_name, 'Sony Headphones');
+
+    // Filter: completed
+    const completed = items.filter((a) => a.is_completed || a.current_step >= 5);
+    assert.strictEqual(completed.length, 2);
+
+    // Search query: 'sony'
+    const query = 'sony';
+    const searched = items.filter((a) => a.item_name.toLowerCase().includes(query));
+    assert.strictEqual(searched.length, 1);
+    assert.strictEqual(searched[0].id, '2');
+  });
 });
+

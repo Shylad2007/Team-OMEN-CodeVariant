@@ -13,13 +13,14 @@ import { useAssessment } from '../../context/AssessmentContext';
 import './Assessment.css';
 
 export const Assessment: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlAssessmentId = searchParams.get('id');
+  const isExplicitNew = searchParams.get('new') === 'true' || urlAssessmentId === 'new';
 
   const {
     data,
     updateData,
-    resetData,
+    startNewAssessment,
     assessmentId,
     currentStep,
     saveAssessment,
@@ -29,12 +30,16 @@ export const Assessment: React.FC = () => {
   const [currentStage, setCurrentStage] = useState<AssessmentStage>(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // If URL has id, load that assessment on mount
+  // Ensure every assessment session has a dedicated unique ID and isolated state
   useEffect(() => {
-    if (urlAssessmentId && urlAssessmentId !== assessmentId) {
+    if (isExplicitNew || !urlAssessmentId) {
+      const freshId = startNewAssessment();
+      setSearchParams({ id: freshId }, { replace: true });
+      setCurrentStage(1);
+    } else if (urlAssessmentId && urlAssessmentId !== assessmentId) {
       loadAssessment(urlAssessmentId);
     }
-  }, [urlAssessmentId, assessmentId, loadAssessment]);
+  }, [urlAssessmentId, isExplicitNew, assessmentId, loadAssessment, startNewAssessment, setSearchParams]);
 
   // Sync current stage if loaded assessment has a valid step
   useEffect(() => {
@@ -140,7 +145,8 @@ export const Assessment: React.FC = () => {
 
   const handleReset = () => {
     if (window.confirm('Start a fresh assessment? Current unsubmitted answers will be cleared.')) {
-      resetData();
+      const freshId = startNewAssessment();
+      setSearchParams({ id: freshId }, { replace: true });
       setCurrentStage(1);
       setErrors({});
       window.scrollTo({ top: 0, behavior: 'smooth' });

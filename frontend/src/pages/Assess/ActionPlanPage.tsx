@@ -17,6 +17,7 @@ import {
   Bot,
   AlertTriangle,
   Sliders,
+  Plus,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAssessment } from '../../context/AssessmentContext';
@@ -981,6 +982,15 @@ export const ActionPlanPage: React.FC = () => {
             </Link>
 
             <div className="flex items-center gap-3 ml-auto flex-wrap">
+              <Link
+                to="/assess?new=true"
+                className="assessment-nav-btn assessment-nav-btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5"
+                title="Evaluate another item"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Assess Another Item</span>
+              </Link>
+
               <button
                 type="button"
                 onClick={() => window.print()}

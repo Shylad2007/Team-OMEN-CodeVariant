@@ -150,7 +150,7 @@ export const BreakEvenCalculator: React.FC = () => {
                 </span>
 
                 <Link
-                  to="/assess"
+                  to="/assess?new=true"
                   className="font-bold text-[#2A5BFF] hover:text-[#0B0B0B] hover:underline flex items-center gap-1"
                 >
                   <span>Evaluate your real item</span>

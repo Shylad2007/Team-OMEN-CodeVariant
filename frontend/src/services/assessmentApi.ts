@@ -47,6 +47,96 @@ export interface AssessmentSummaryItem {
   created_at: string;
 }
 
+export const LOCAL_STORAGE_ASSESSMENTS_KEY = 'r3vive_local_assessments';
+
+/**
+ * Generates an RFC 4122 v4 UUID or compliant fallback ID.
+ */
+export function generateAssessmentId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'assess-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now().toString(36);
+}
+
+/**
+ * Lists all assessments cached in local storage (for guest users and offline resilience).
+ */
+export function listLocalAssessments(): AssessmentSummaryItem[] {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(LOCAL_STORAGE_ASSESSMENTS_KEY);
+    if (!raw) return [];
+    const map: Record<string, PersistentAssessment> = JSON.parse(raw);
+    const items: AssessmentSummaryItem[] = Object.values(map).map((rec) => ({
+      id: rec.id,
+      item_name: rec.item_name,
+      category: rec.category,
+      condition: rec.condition,
+      brand_model: rec.brand_model,
+      current_step: rec.current_step,
+      is_completed: rec.is_completed,
+      recommended_outcome: rec.recommended_outcome,
+      selected_outcome: rec.selected_outcome,
+      selected_branch_id: rec.selected_branch_id,
+      updated_at: rec.updated_at,
+      created_at: rec.created_at,
+    }));
+    return items.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Retrieves a single assessment from local storage by ID.
+ */
+export function getLocalAssessment(id: string): PersistentAssessment | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(LOCAL_STORAGE_ASSESSMENTS_KEY);
+    if (!raw) return null;
+    const map: Record<string, PersistentAssessment> = JSON.parse(raw);
+    return map[id] || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persists an assessment record to local storage.
+ */
+export function saveLocalAssessment(record: PersistentAssessment): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem(LOCAL_STORAGE_ASSESSMENTS_KEY);
+    const map: Record<string, PersistentAssessment> = raw ? JSON.parse(raw) : {};
+    map[record.id] = {
+      ...record,
+      updated_at: new Date().toISOString(),
+    };
+    localStorage.setItem(LOCAL_STORAGE_ASSESSMENTS_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Deletes an assessment from local storage.
+ */
+export function deleteLocalAssessment(id: string): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem(LOCAL_STORAGE_ASSESSMENTS_KEY);
+    if (!raw) return;
+    const map: Record<string, PersistentAssessment> = JSON.parse(raw);
+    delete map[id];
+    localStorage.setItem(LOCAL_STORAGE_ASSESSMENTS_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Transforms frontend AssessmentData and workflow state into database payload.
  */
@@ -148,7 +238,7 @@ export function fromDatabaseRecord(record: PersistentAssessment): {
  */
 export async function createAssessment(
   data: AssessmentData,
-  token: string,
+  token?: string,
   options?: {
     id?: string;
     userId?: string;
@@ -161,6 +251,40 @@ export async function createAssessment(
   }
 ): Promise<PersistentAssessment> {
   const payload = toDatabasePayload(data, options);
+  const now = new Date().toISOString();
+  const fallbackRecord: PersistentAssessment = {
+    id: options?.id || generateAssessmentId(),
+    user_id: options?.userId || 'local-guest',
+    item_name: data.itemName.trim(),
+    category: data.category!,
+    custom_category: data.customCategory?.trim() || null,
+    brand_model: data.brandModel?.trim() || null,
+    age: data.age || null,
+    condition: data.condition!,
+    reported_fault: data.reportedFault.trim(),
+    repair_cost: data.repairCostUnknown ? null : data.repairCost,
+    repair_cost_unknown: data.repairCostUnknown,
+    replacement_cost: data.replacementCostUnknown ? null : data.replacementCost,
+    replacement_cost_unknown: data.replacementCostUnknown,
+    expected_lifespan_years: data.expectedLifespanUnknown ? null : data.expectedLifespanYears,
+    expected_lifespan_unknown: data.expectedLifespanUnknown,
+    budget_constraint: data.budgetConstraint || null,
+    urgency: data.urgency || null,
+    primary_priority: data.primaryPriority || null,
+    adaptive_answers: payload.adaptive_answers as Record<string, string>,
+    current_step: options?.currentStep ?? 1,
+    is_completed: options?.isCompleted ?? false,
+    recommended_outcome: options?.recommendedOutcome || null,
+    selected_outcome: options?.selectedOutcome || null,
+    selected_branch_id: options?.selectedBranchId || null,
+    created_at: now,
+    updated_at: now,
+  };
+
+  if (!token) {
+    saveLocalAssessment(fallbackRecord);
+    return fallbackRecord;
+  }
 
   // 1. Primary: Authenticated FastAPI Backend (forwards bearer token with PostgREST RLS)
   try {
@@ -174,7 +298,9 @@ export async function createAssessment(
     });
 
     if (res.ok) {
-      return await res.json();
+      const created = await res.json();
+      saveLocalAssessment(created);
+      return created;
     } else {
       const errText = await res.text().catch(() => '');
       console.warn(`[API] Backend POST failed (${res.status}): ${errText}`);
@@ -191,7 +317,8 @@ export async function createAssessment(
   }
 
   if (!resolvedUserId) {
-    throw new Error('Authentication required: user session not found.');
+    saveLocalAssessment(fallbackRecord);
+    return fallbackRecord;
   }
 
   const directPayload = {
@@ -206,9 +333,12 @@ export async function createAssessment(
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    saveLocalAssessment(fallbackRecord);
+    return fallbackRecord;
   }
-  return record as PersistentAssessment;
+  const createdRecord = record as PersistentAssessment;
+  saveLocalAssessment(createdRecord);
+  return createdRecord;
 }
 
 /**
@@ -217,8 +347,22 @@ export async function createAssessment(
 export async function updateAssessment(
   id: string,
   partialData: Partial<ReturnType<typeof toDatabasePayload>>,
-  token: string
+  token?: string
 ): Promise<PersistentAssessment> {
+  if (!token) {
+    const existing = getLocalAssessment(id);
+    if (existing) {
+      const updated: PersistentAssessment = {
+        ...existing,
+        ...partialData,
+        updated_at: new Date().toISOString(),
+      } as PersistentAssessment;
+      saveLocalAssessment(updated);
+      return updated;
+    }
+    throw new Error('Local assessment record not found');
+  }
+
   // 1. Primary: Authenticated FastAPI Backend
   try {
     const res = await fetch(`${API_BASE}/${id}`, {
@@ -231,7 +375,9 @@ export async function updateAssessment(
     });
 
     if (res.ok) {
-      return await res.json();
+      const updated = await res.json();
+      saveLocalAssessment(updated);
+      return updated;
     } else {
       const errText = await res.text().catch(() => '');
       console.warn(`[API] Backend PUT failed (${res.status}): ${errText}`);
@@ -249,48 +395,77 @@ export async function updateAssessment(
     .single();
 
   if (error) {
+    const existing = getLocalAssessment(id);
+    if (existing) {
+      const updated: PersistentAssessment = {
+        ...existing,
+        ...partialData,
+        updated_at: new Date().toISOString(),
+      } as PersistentAssessment;
+      saveLocalAssessment(updated);
+      return updated;
+    }
     throw new Error(error.message);
   }
-  return record as PersistentAssessment;
+  const updatedRecord = record as PersistentAssessment;
+  saveLocalAssessment(updatedRecord);
+  return updatedRecord;
 }
 
 /**
  * Retrieves a single assessment by ID.
  */
-export async function getAssessment(id: string, token: string): Promise<PersistentAssessment> {
-  try {
-    const res = await fetch(`${API_BASE}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+export async function getAssessment(id: string, token?: string): Promise<PersistentAssessment> {
+  if (token) {
+    try {
+      const res = await fetch(`${API_BASE}/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    if (res.ok) {
-      return await res.json();
+      if (res.ok) {
+        const fetched = await res.json();
+        saveLocalAssessment(fetched);
+        return fetched;
+      }
+      if (res.status === 404) {
+        throw new Error('Assessment not found or access denied.');
+      }
+    } catch (err: any) {
+      if (err.message?.includes('not found')) throw err;
     }
-    if (res.status === 404) {
-      throw new Error('Assessment not found or access denied.');
+
+    const { data: record, error } = await supabase
+      .from('assessments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (!error && record) {
+      const fetched = record as PersistentAssessment;
+      saveLocalAssessment(fetched);
+      return fetched;
     }
-  } catch (err: any) {
-    if (err.message?.includes('not found')) throw err;
   }
 
-  const { data: record, error } = await supabase
-    .from('assessments')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error || !record) {
-    throw new Error(error?.message || 'Assessment record not found');
+  // Fallback to local storage
+  const local = getLocalAssessment(id);
+  if (local) {
+    return local;
   }
-  return record as PersistentAssessment;
+
+  throw new Error('Assessment record not found');
 }
 
 /**
  * Lists all assessments for the authenticated user.
  */
-export async function listUserAssessments(token: string): Promise<AssessmentSummaryItem[]> {
+export async function listUserAssessments(token?: string): Promise<AssessmentSummaryItem[]> {
+  if (!token) {
+    return listLocalAssessments();
+  }
+
   try {
     const res = await fetch(API_BASE, {
       headers: {
@@ -300,7 +475,8 @@ export async function listUserAssessments(token: string): Promise<AssessmentSumm
 
     if (res.ok) {
       const data = await res.json();
-      return data.items || [];
+      const items: AssessmentSummaryItem[] = data.items || [];
+      return items;
     }
   } catch {
     // Fallback to Supabase client
@@ -312,6 +488,8 @@ export async function listUserAssessments(token: string): Promise<AssessmentSumm
     .order('updated_at', { ascending: false });
 
   if (error) {
+    const local = listLocalAssessments();
+    if (local.length > 0) return local;
     throw new Error(error.message);
   }
   return (records || []) as AssessmentSummaryItem[];
@@ -320,7 +498,13 @@ export async function listUserAssessments(token: string): Promise<AssessmentSumm
 /**
  * Deletes an assessment by ID.
  */
-export async function deleteAssessment(id: string, token: string): Promise<void> {
+export async function deleteAssessment(id: string, token?: string): Promise<void> {
+  deleteLocalAssessment(id);
+
+  if (!token) {
+    return;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/${id}`, {
       method: 'DELETE',
