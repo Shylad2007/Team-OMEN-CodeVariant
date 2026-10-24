@@ -1,40 +1,119 @@
-/* =========================================================================
-   R3VIVE Dashboard & Assessment History Styles
-   Neo-Brutalist / Paper-Bright Retro Terminal Design
-   ========================================================================= */
+/* ==========================================================================
+   R3VIVE — Main Dashboard Page Stylesheet
+   Design Language: Paper-Bright Retro Terminal
+   ========================================================================== */
 
-.dashboard-bracket {
-  position: relative;
+.dashboard-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-paper, #F4EFE2);
+  color: var(--color-ink, #0B0B0B);
 }
 
+.dashboard-card {
+  background-color: var(--color-surface, #FFFDF5);
+  border: 3px solid var(--color-ink, #0B0B0B);
+  box-shadow: 6px 6px 0px var(--color-ink, #0B0B0B);
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Hard offset box helpers */
+.retro-box {
+  background-color: var(--color-surface, #FFFDF5);
+  border: 2px solid var(--color-ink, #0B0B0B);
+  box-shadow: 4px 4px 0px var(--color-ink, #0B0B0B);
+}
+
+/* Corner bracket details */
 .dashboard-bracket::before,
 .dashboard-bracket::after {
   content: '';
   position: absolute;
   width: 10px;
   height: 10px;
-  border-color: #0B0B0B;
   pointer-events: none;
 }
 
 .dashboard-bracket::before {
-  top: -2px;
-  left: -2px;
-  border-top: 2px solid #0B0B0B;
-  border-left: 2px solid #0B0B0B;
+  top: 6px;
+  left: 6px;
+  border-top: 2px solid var(--color-ink, #0B0B0B);
+  border-left: 2px solid var(--color-ink, #0B0B0B);
 }
 
 .dashboard-bracket::after {
-  bottom: -2px;
-  right: -2px;
-  border-bottom: 2px solid #0B0B0B;
-  border-right: 2px solid #0B0B0B;
+  bottom: 6px;
+  right: 6px;
+  border-bottom: 2px solid var(--color-ink, #0B0B0B);
+  border-right: 2px solid var(--color-ink, #0B0B0B);
 }
 
-.dashboard-card {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+/* Retro Terminal Badge */
+.dashboard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.6rem;
+  border: 1.5px solid var(--color-ink, #0B0B0B);
+  background-color: var(--color-yellow, #FFE600);
+  color: var(--color-ink, #0B0B0B);
 }
 
-.dashboard-card:hover {
+/* Retro Interactive Buttons */
+.retro-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  padding: 0.75rem 1.25rem;
+  border: 2px solid var(--color-ink, #0B0B0B);
+  background-color: var(--color-yellow, #FFE600);
+  color: var(--color-ink, #0B0B0B);
+  box-shadow: 3px 3px 0px var(--color-ink, #0B0B0B);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.retro-btn:hover {
   transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px var(--color-ink, #0B0B0B);
+}
+
+.retro-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px var(--color-ink, #0B0B0B);
+}
+
+.retro-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.retro-btn-secondary {
+  background-color: var(--color-surface, #FFFDF5);
+}
+
+.retro-btn-secondary:hover {
+  background-color: #F0ECE1;
+}
+
+.retro-btn-dark {
+  background-color: var(--color-ink, #0B0B0B);
+  color: #FFFDF5;
+  box-shadow: 3px 3px 0px #FFE600;
+}
+
+.retro-btn-dark:hover {
+  box-shadow: 4px 4px 0px #FFE600;
 }
