@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --color-paper: #F4EFE2;
+  --color-surface: #FFFDF5;
+  --color-ink: #0B0B0B;
+  --color-yellow: #FFE600;
+  --color-red: #FF3344;
+  --color-green: #10B25A;
+  --color-blue: #2A5BFF;
+  --color-muted: #6C6659;
+  --color-border: #0B0B0B;
+
+  --shadow-hard-xs: 2px 2px 0px #0B0B0B;
+  --shadow-hard-sm: 3px 3px 0px #0B0B0B;
+  --shadow-hard: 4px 4px 0px #0B0B0B;
+  --shadow-hard-md: 6px 6px 0px #0B0B0B;
+  --shadow-hard-lg: 8px 8px 0px #0B0B0B;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background-color: #FFE600;
+  color: #0B0B0B;
+}
+
+/* Retro Paper Dot Grid Pattern */
+.retro-dot-pattern {
+  background-image: radial-gradient(rgba(11, 11, 11, 0.12) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+  background-position: 0 0;
+}
+
+.retro-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(11, 11, 11, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(11, 11, 11, 0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Monospace font utility */
+.font-mono-code {
+  font-family: 'JetBrains Mono', 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
