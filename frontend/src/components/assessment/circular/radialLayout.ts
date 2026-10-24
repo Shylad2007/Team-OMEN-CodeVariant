@@ -54,12 +54,12 @@ export function buildCircularGraphElements(
   });
 
   // Calibrated anisotropic radial radii to eliminate all bounding box overlaps
-  // and guarantee >= 40px clearance between all nodes and connectors
-  const R_OUTCOMES_X = 320; // Horizontal radius to 5 Outcomes
-  const R_OUTCOMES_Y = 260; // Vertical radius to 5 Outcomes
-  const R_BRANCHES_X = 560; // Horizontal radius to Sub-Branches
-  const R_BRANCHES_Y = 440; // Vertical radius to Sub-Branches
-  const ANGULAR_SPREAD = 32; // Spread between sibling branches in degrees (+/- 16°)
+  // and guarantee >= 50px clearance between all nodes and connectors
+  const R_OUTCOMES_X = 360; // Horizontal radius to 5 Outcomes
+  const R_OUTCOMES_Y = 270; // Vertical radius to 5 Outcomes
+  const R_BRANCHES_X = 630; // Horizontal radius to Sub-Branches
+  const R_BRANCHES_Y = 470; // Vertical radius to Sub-Branches
+  const ANGULAR_SPREAD = 30; // Spread between sibling branches in degrees (+/- 15°)
 
   const outcomesList = Object.values(evaluatedTree.outcomes);
 
