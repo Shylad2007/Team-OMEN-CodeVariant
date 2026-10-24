@@ -1,0 +1,402 @@
+import { supabase } from '../lib/supabase';
+import type { AssessmentData, ItemCategoryId, ConditionGradeId } from '../components/assessment/types';
+
+const API_BASE = 'http://127.0.0.1:8000/api/assessments';
+
+export interface PersistentAssessment {
+  id: string;
+  user_id: string;
+  item_name: string;
+  category: ItemCategoryId;
+  custom_category: string | null;
+  brand_model: string | null;
+  age: string | null;
+  condition: ConditionGradeId;
+  reported_fault: string;
+  repair_cost: number | null;
+  repair_cost_unknown: boolean;
+  replacement_cost: number | null;
+  replacement_cost_unknown: boolean;
+  expected_lifespan_years: number | null;
+  expected_lifespan_unknown: boolean;
+  budget_constraint: string | null;
+  urgency: string | null;
+  primary_priority: string | null;
+  adaptive_answers: Record<string, string>;
+  current_step: number;
+  is_completed: boolean;
+  recommended_outcome: string | null;
+  selected_outcome: string | null;
+  selected_branch_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssessmentSummaryItem {
+  id: string;
+  item_name: string;
+  category: ItemCategoryId;
+  condition: ConditionGradeId;
+  brand_model: string | null;
+  current_step: number;
+  is_completed: boolean;
+  recommended_outcome: string | null;
+  selected_outcome: string | null;
+  selected_branch_id: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+/**
+ * Transforms frontend AssessmentData and workflow state into database payload.
+ */
+export function toDatabasePayload(
+  data: AssessmentData,
+  options?: {
+    id?: string;
+    userId?: string;
+    currentStep?: number;
+    isCompleted?: boolean;
+    recommendedOutcome?: string | null;
+    selectedOutcome?: string | null;
+    selectedBranchId?: string | null;
+    checklistProgress?: Record<string, Record<number, boolean>>;
+  }
+) {
+  const mergedAdaptive = {
+    ...(data.adaptiveAnswers || {}),
+    ...(options?.checklistProgress !== undefined
+      ? { _checklist_progress: options.checklistProgress }
+      : {}),
+  };
+
+  return {
+    ...(options?.id ? { id: options.id } : {}),
+    ...(options?.userId ? { user_id: options.userId } : {}),
+    item_name: data.itemName.trim(),
+    category: data.category,
+    custom_category: data.customCategory?.trim() || null,
+    brand_model: data.brandModel?.trim() || null,
+    age: data.age || null,
+    condition: data.condition,
+    reported_fault: data.reportedFault.trim(),
+    repair_cost: data.repairCostUnknown ? null : data.repairCost,
+    repair_cost_unknown: data.repairCostUnknown,
+    replacement_cost: data.replacementCostUnknown ? null : data.replacementCost,
+    replacement_cost_unknown: data.replacementCostUnknown,
+    expected_lifespan_years: data.expectedLifespanUnknown ? null : data.expectedLifespanYears,
+    expected_lifespan_unknown: data.expectedLifespanUnknown,
+    budget_constraint: data.budgetConstraint || null,
+    urgency: data.urgency || null,
+    primary_priority: data.primaryPriority || null,
+    adaptive_answers: mergedAdaptive,
+    current_step: options?.currentStep ?? 1,
+    is_completed: options?.isCompleted ?? false,
+    recommended_outcome: options?.recommendedOutcome || null,
+    selected_outcome: options?.selectedOutcome || null,
+    selected_branch_id: options?.selectedBranchId || null,
+  };
+}
+
+/**
+ * Transforms database record into frontend AssessmentData.
+ */
+export function fromDatabaseRecord(record: PersistentAssessment): {
+  data: AssessmentData;
+  currentStep: number;
+  isCompleted: boolean;
+  recommendedOutcome: string | null;
+  selectedOutcome: string | null;
+  selectedBranchId: string | null;
+  checklistProgress: Record<string, Record<number, boolean>>;
+} {
+  const rawAdaptive = record.adaptive_answers || {};
+  const extractedChecklist: Record<string, Record<number, boolean>> =
+    (record as any).checklist_progress || rawAdaptive._checklist_progress || {};
+
+  return {
+    data: {
+      itemName: record.item_name || '',
+      category: record.category,
+      customCategory: record.custom_category || '',
+      brandModel: record.brand_model || '',
+      age: (record.age as any) || null,
+      condition: record.condition,
+      reportedFault: record.reported_fault || '',
+      repairCost: record.repair_cost,
+      repairCostUnknown: Boolean(record.repair_cost_unknown),
+      replacementCost: record.replacement_cost,
+      replacementCostUnknown: Boolean(record.replacement_cost_unknown),
+      expectedLifespanYears: record.expected_lifespan_years,
+      expectedLifespanUnknown: Boolean(record.expected_lifespan_unknown),
+      budgetConstraint: (record.budget_constraint as any) || null,
+      urgency: (record.urgency as any) || null,
+      primaryPriority: (record.primary_priority as any) || null,
+      adaptiveAnswers: rawAdaptive,
+    },
+    currentStep: record.current_step || 1,
+    isCompleted: Boolean(record.is_completed),
+    recommendedOutcome: record.recommended_outcome,
+    selectedOutcome: record.selected_outcome,
+    selectedBranchId: record.selected_branch_id,
+    checklistProgress: extractedChecklist,
+  };
+}
+
+/**
+ * Creates or upserts an assessment via the FastAPI backend with Supabase client fallback.
+ */
+export async function createAssessment(
+  data: AssessmentData,
+  token: string,
+  options?: {
+    id?: string;
+    userId?: string;
+    currentStep?: number;
+    isCompleted?: boolean;
+    recommendedOutcome?: string | null;
+    selectedOutcome?: string | null;
+    selectedBranchId?: string | null;
+    checklistProgress?: Record<string, Record<number, boolean>>;
+  }
+): Promise<PersistentAssessment> {
+  const payload = toDatabasePayload(data, options);
+
+  // 1. Primary: Authenticated FastAPI Backend (forwards bearer token with PostgREST RLS)
+  try {
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      return await res.json();
+    } else {
+      const errText = await res.text().catch(() => '');
+      console.warn(`[API] Backend POST failed (${res.status}): ${errText}`);
+    }
+  } catch (netErr) {
+    console.warn('[API] Backend unreachable, falling back to direct Supabase client:', netErr);
+  }
+
+  // 2. Fallback: Direct Supabase client using active user JWT & RLS
+  let resolvedUserId = payload.user_id;
+  if (!resolvedUserId) {
+    const { data: userData } = await supabase.auth.getUser();
+    resolvedUserId = userData.user?.id;
+  }
+
+  if (!resolvedUserId) {
+    throw new Error('Authentication required: user session not found.');
+  }
+
+  const directPayload = {
+    ...payload,
+    user_id: resolvedUserId,
+  };
+
+  const { data: record, error } = await supabase
+    .from('assessments')
+    .upsert(directPayload, { onConflict: 'id' })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return record as PersistentAssessment;
+}
+
+/**
+ * Updates an existing assessment by ID.
+ */
+export async function updateAssessment(
+  id: string,
+  partialData: Partial<ReturnType<typeof toDatabasePayload>>,
+  token: string
+): Promise<PersistentAssessment> {
+  // 1. Primary: Authenticated FastAPI Backend
+  try {
+    const res = await fetch(`${API_BASE}/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(partialData),
+    });
+
+    if (res.ok) {
+      return await res.json();
+    } else {
+      const errText = await res.text().catch(() => '');
+      console.warn(`[API] Backend PUT failed (${res.status}): ${errText}`);
+    }
+  } catch (netErr) {
+    console.warn('[API] Backend unreachable, falling back to direct Supabase client:', netErr);
+  }
+
+  // 2. Fallback: Direct Supabase client
+  const { data: record, error } = await supabase
+    .from('assessments')
+    .update(partialData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return record as PersistentAssessment;
+}
+
+/**
+ * Retrieves a single assessment by ID.
+ */
+export async function getAssessment(id: string, token: string): Promise<PersistentAssessment> {
+  try {
+    const res = await fetch(`${API_BASE}/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.ok) {
+      return await res.json();
+    }
+    if (res.status === 404) {
+      throw new Error('Assessment not found or access denied.');
+    }
+  } catch (err: any) {
+    if (err.message?.includes('not found')) throw err;
+  }
+
+  const { data: record, error } = await supabase
+    .from('assessments')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !record) {
+    throw new Error(error?.message || 'Assessment record not found');
+  }
+  return record as PersistentAssessment;
+}
+
+/**
+ * Lists all assessments for the authenticated user.
+ */
+export async function listUserAssessments(token: string): Promise<AssessmentSummaryItem[]> {
+  try {
+    const res = await fetch(API_BASE, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.items || [];
+    }
+  } catch {
+    // Fallback to Supabase client
+  }
+
+  const { data: records, error } = await supabase
+    .from('assessments')
+    .select('id, item_name, category, condition, brand_model, current_step, is_completed, recommended_outcome, selected_outcome, selected_branch_id, updated_at, created_at')
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (records || []) as AssessmentSummaryItem[];
+}
+
+/**
+ * Deletes an assessment by ID.
+ */
+export async function deleteAssessment(id: string, token: string): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/${id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.status === 204 || res.ok) {
+      return;
+    }
+  } catch {
+    // Fallback to Supabase
+  }
+
+  const { error } = await supabase.from('assessments').delete().eq('id', id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export interface DecisionGuidancePayload {
+  item_name: string;
+  category: string;
+  brand_model?: string | null;
+  condition: string;
+  reported_fault: string;
+  age?: string | null;
+  repair_cost?: number | null;
+  repair_cost_unknown?: boolean;
+  replacement_cost?: number | null;
+  replacement_cost_unknown?: boolean;
+  budget_constraint?: string | null;
+  urgency?: string | null;
+  primary_priority?: string | null;
+  recommended_outcome: string;
+  selected_outcome: string;
+  selected_branch_title?: string | null;
+}
+
+export interface DecisionGuidanceResult {
+  ai_available: boolean;
+  source: string;
+  summary_verdict: string;
+  practical_steps: string[];
+  safety_cautions: string[];
+  cost_carbon_insight: string;
+  model_version?: string | null;
+  note?: string | null;
+}
+
+/**
+ * Fetches contextual decision intelligence guidance from the backend.
+ * Uses Gemini (gemini-3.8-flash) if available, or deterministic expert fallback.
+ */
+export async function getDecisionAiGuidance(
+  payload: DecisionGuidancePayload,
+  token?: string
+): Promise<DecisionGuidanceResult> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/ai-guidance`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(`Failed to retrieve decision guidance (${res.status}): ${errorBody}`);
+  }
+
+  return await res.json();
+}

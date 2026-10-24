@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Zap, X, Menu } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface HomeNavbarProps {
-  onTriggerNotice: (featureName: string) => void;
   onScrollToSimulator: () => void;
 }
 
 export const HomeNavbar: React.FC<HomeNavbarProps> = ({
-  onTriggerNotice,
   onScrollToSimulator,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 bg-[#F4EFE2] border-b-2 border-[#0B0B0B]">
@@ -18,7 +19,7 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
         
         {/* Logo & Tagline */}
         <div className="flex items-center gap-4">
-          <a href="#" className="flex items-center gap-2.5 group">
+          <Link to="/" className="flex items-center gap-2.5 group">
             <div className="w-10 h-10 bg-[#FFE600] border-2 border-[#0B0B0B] shadow-[2px_2px_0px_#0B0B0B] flex items-center justify-center font-mono font-black text-xl group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-transform">
               R3
             </div>
@@ -30,7 +31,7 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
                 Rethink • Repair • Reimagine
               </span>
             </div>
-          </a>
+          </Link>
         </div>
 
         {/* Desktop Navigation Links */}
@@ -51,12 +52,15 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
 
         {/* Action CTAs */}
         <div className="hidden sm:flex items-center gap-3">
-          <button 
-            onClick={() => onTriggerNotice('Account Sign In')}
-            className="retro-btn retro-btn-secondary text-xs py-2 px-3.5"
-          >
-            Sign In
-          </button>
+          {!user && (
+            <Link 
+              to="/login"
+              className="retro-btn retro-btn-secondary text-xs py-2 px-3.5 font-mono font-bold"
+            >
+              Sign In
+            </Link>
+          )}
+
           <button 
             onClick={onScrollToSimulator}
             className="retro-btn text-xs py-2 px-4 flex items-center gap-2"
@@ -68,9 +72,9 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
 
         {/* Mobile Menu Button */}
         <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="sm:hidden p-2 border-2 border-[#0B0B0B] bg-[#FFFDF5] shadow-[2px_2px_0px_#0B0B0B]"
-            aria-label="Toggle navigation menu"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="sm:hidden p-2 border-2 border-[#0B0B0B] bg-[#FFFDF5] shadow-[2px_2px_0px_#0B0B0B]"
+          aria-label="Toggle navigation menu"
         >
           {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -107,25 +111,39 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
           >
             Break-Even Calculator
           </a>
+
           <div className="flex gap-2 pt-2">
-            <button 
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onTriggerNotice('Account Sign In');
-              }}
-              className="retro-btn retro-btn-secondary text-xs py-2 flex-1"
-            >
-              Sign In
-            </button>
-            <button 
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onTriggerNotice('Item Assessment');
-              }}
-              className="retro-btn text-xs py-2 flex-1"
-            >
-              Assess Item
-            </button>
+            {!user ? (
+              <>
+                <Link 
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="retro-btn retro-btn-secondary text-xs py-2 flex-1 text-center font-bold"
+                >
+                  Sign In
+                </Link>
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onScrollToSimulator();
+                  }}
+                  className="retro-btn text-xs py-2 flex-1 font-bold"
+                >
+                  Assess Item
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onScrollToSimulator();
+                }}
+                className="retro-btn text-xs py-2 w-full font-bold flex items-center justify-center gap-2"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Start Assessment
+              </button>
+            )}
           </div>
         </div>
       )}
