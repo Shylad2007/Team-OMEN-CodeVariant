@@ -6,6 +6,7 @@ import { Assessment } from './pages/Assess/Assessment';
 import { DecisionTreePage } from './pages/Assess/DecisionTreePage';
 import { ComparatorPage } from './pages/Assess/ComparatorPage';
 import { ActionPlanPage } from './pages/Assess/ActionPlanPage';
+import { Dashboard } from './pages/Dashboard/Dashboard';
 
 function App() {
   return (
@@ -14,6 +15,8 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/history" element={<Navigate to="/dashboard" replace />} />
             <Route path="/assess" element={<Assessment />} />
             <Route path="/assess/decision-tree" element={<DecisionTreePage />} />
             <Route path="/assess/comparator" element={<ComparatorPage />} />

@@ -1,0 +1,40 @@
+/* =========================================================================
+   R3VIVE Dashboard & Assessment History Styles
+   Neo-Brutalist / Paper-Bright Retro Terminal Design
+   ========================================================================= */
+
+.dashboard-bracket {
+  position: relative;
+}
+
+.dashboard-bracket::before,
+.dashboard-bracket::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: #0B0B0B;
+  pointer-events: none;
+}
+
+.dashboard-bracket::before {
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #0B0B0B;
+  border-left: 2px solid #0B0B0B;
+}
+
+.dashboard-bracket::after {
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 2px solid #0B0B0B;
+  border-right: 2px solid #0B0B0B;
+}
+
+.dashboard-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dashboard-card:hover {
+  transform: translate(-1px, -1px);
+}
