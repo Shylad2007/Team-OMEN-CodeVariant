@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, RefreshCw, Sliders } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAssessment } from '../../context/AssessmentContext';
 import { evaluateCircularDecisionTree } from '../../components/assessment/circular/circularTreeData';
 import { CircularDecisionCanvas } from '../../components/assessment/circular/CircularDecisionCanvas';
@@ -275,25 +275,6 @@ export const DecisionTreePage: React.FC = () => {
                 </span>
               </div>
             )}
-
-            <Link
-              to={`/assess/comparator${assessmentId ? `?id=${assessmentId}` : ''}`}
-              className="assessment-nav-btn text-[10.5px] py-1 px-2.5 shadow-[1px_1px_0px_#0B0B0B] flex items-center gap-1 font-mono font-bold bg-[#FFFDF5] hover:bg-[#FFE600]"
-              title="Compare Repair vs Replace"
-            >
-              <Sliders className="w-3 h-3 text-[#2A5BFF]" />
-              <span>Comparator</span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={handleContinueToActionPlan}
-              disabled={isNavigating}
-              className="assessment-nav-btn text-[10.5px] py-1 px-3 shadow-[1px_1px_0px_#0B0B0B] flex items-center gap-1 font-mono font-bold ml-1"
-            >
-              <span>Action Plan</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
           </div>
         </div>
 

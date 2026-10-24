@@ -9,7 +9,7 @@ interface OutcomeSectorNodeProps {
 }
 
 export const OutcomeSectorNode: React.FC<OutcomeSectorNodeProps> = ({ data }) => {
-  const { outcomeType, title, bannerBg, fitPercentage, summary, isRecommended, onNodeClick } = data;
+  const { outcomeType, title, bannerBg, fitPercentage, summary, isRecommended, isActive, onNodeClick } = data;
 
   const getIcon = (type: OutcomeType) => {
     switch (type) {
@@ -33,7 +33,13 @@ export const OutcomeSectorNode: React.FC<OutcomeSectorNodeProps> = ({ data }) =>
       onClick={() => onNodeClick && onNodeClick(nodeId)}
       className={`
         w-[220px] bg-[#FFFDF5] border-2 border-[#0B0B0B] font-sans text-left relative cursor-pointer group transition-all
-        ${isRecommended ? 'shadow-[4px_4px_0px_#0B0B0B] -translate-x-0.5 -translate-y-0.5' : 'shadow-[2px_2px_0px_#0B0B0B] hover:shadow-[3px_3px_0px_#0B0B0B]'}
+        ${
+          isActive
+            ? 'ring-2 ring-[#0B0B0B] shadow-[4px_4px_0px_#0B0B0B] -translate-x-0.5 -translate-y-0.5'
+            : isRecommended
+            ? 'shadow-[3px_3px_0px_#0B0B0B]'
+            : 'shadow-[2px_2px_0px_#0B0B0B] hover:shadow-[3px_3px_0px_#0B0B0B]'
+        }
       `}
     >
       {/* Target handles for radial center edge */}
@@ -59,6 +65,11 @@ export const OutcomeSectorNode: React.FC<OutcomeSectorNodeProps> = ({ data }) =>
           {isRecommended && (
             <span className="font-mono text-[8px] font-black px-1 py-0.2 bg-[#0B0B0B] text-[#FFE600]">
               TOP
+            </span>
+          )}
+          {isActive && !isRecommended && (
+            <span className="font-mono text-[8px] font-black px-1 py-0.2 bg-[#0B0B0B] text-[#FFE600]">
+              ACTIVE
             </span>
           )}
           <span className="font-mono text-[9px] font-black px-1 py-0.2 bg-[#FFFDF5] border border-[#0B0B0B]">

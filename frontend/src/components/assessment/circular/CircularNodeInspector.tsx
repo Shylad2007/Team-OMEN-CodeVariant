@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import {
   X,
   Wrench,
@@ -13,7 +12,6 @@ import {
   DollarSign,
   ShieldCheck,
   Award,
-  Sliders,
 } from 'lucide-react';
 import type { EvaluatedCircularTree, OutcomeType } from './circularTreeTypes';
 
@@ -271,15 +269,17 @@ export const CircularNodeInspector: React.FC<CircularNodeInspectorProps> = ({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-[#0B0B0B]/20 flex flex-col gap-2">
-          <Link
-            to="/assess/comparator"
-            className="w-full py-2 px-3 bg-[#FFFDF5] hover:bg-[#FFE600] border-2 border-[#0B0B0B] font-mono text-xs font-bold text-[#0B0B0B] text-center flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#0B0B0B] transition-colors"
-          >
-            <Sliders className="w-3.5 h-3.5 text-[#2A5BFF]" />
-            <span>Examine Repair vs Replace Trade-Offs →</span>
-          </Link>
-        </div>
+        {onContinueToActionPlan && (
+          <div className="pt-3 border-t border-[#0B0B0B]/20 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={onContinueToActionPlan}
+              className="w-full py-2 px-3 bg-[#FFE600] hover:bg-[#0B0B0B] hover:text-[#FFE600] border-2 border-[#0B0B0B] font-mono text-xs font-bold text-[#0B0B0B] text-center flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#0B0B0B] transition-colors cursor-pointer"
+            >
+              <span>Continue to Action Plan →</span>
+            </button>
+          </div>
+        )}
       </div>
     );
   }

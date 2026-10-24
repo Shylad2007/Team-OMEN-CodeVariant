@@ -18,6 +18,7 @@ export interface OutcomeNodeData extends Record<string, unknown> {
   fitPercentage: number;
   summary: string;
   isRecommended: boolean;
+  isActive: boolean;
   onNodeClick?: (nodeId: string) => void;
 }
 
@@ -58,10 +59,35 @@ export function buildCircularGraphElements(
 
   const outcomesList = Object.values(evaluatedTree.outcomes);
 
+  // Determine active outcome and active branch
+  let activeOutcomeType: OutcomeType = evaluatedTree.recommendedOutcome;
+  let currentActiveBranchId: string | null = activeBranchId;
+
+  if (activeBranchId) {
+    const parentSector = outcomesList.find((sector) =>
+      sector.subBranches.some((b) => b.id === activeBranchId)
+    );
+    if (parentSector) {
+      activeOutcomeType = parentSector.outcomeType;
+    } else if (activeBranchId.startsWith('outcome_')) {
+      const parsed = activeBranchId.replace('outcome_', '') as OutcomeType;
+      if (evaluatedTree.outcomes[parsed]) {
+        activeOutcomeType = parsed;
+        currentActiveBranchId = evaluatedTree.outcomes[parsed].subBranches[0]?.id || null;
+      }
+    } else if (evaluatedTree.outcomes[activeBranchId as OutcomeType]) {
+      activeOutcomeType = activeBranchId as OutcomeType;
+      currentActiveBranchId = evaluatedTree.outcomes[activeOutcomeType].subBranches[0]?.id || null;
+    }
+  } else {
+    currentActiveBranchId = evaluatedTree.activeBranchId || evaluatedTree.outcomes[activeOutcomeType]?.subBranches[0]?.id || null;
+  }
+
   outcomesList.forEach((sector) => {
     const outcomeId = `outcome_${sector.outcomeType}`;
     const rad = (sector.angleDegrees * Math.PI) / 180;
     const isRecommended = sector.outcomeType === evaluatedTree.recommendedOutcome;
+    const isSectorActive = sector.outcomeType === activeOutcomeType;
 
     // Outcome coordinates
     const ox = R_OUTCOMES * Math.cos(rad);
@@ -81,6 +107,7 @@ export function buildCircularGraphElements(
         fitPercentage: sector.fitPercentage,
         summary: sector.summary,
         isRecommended,
+        isActive: isSectorActive,
         onNodeClick: callbacks?.onNodeClick,
       } as OutcomeNodeData,
     });
@@ -118,8 +145,12 @@ export function buildCircularGraphElements(
       branchTargetHandle = 'right';
     }
 
-    // Edge from Center -> Outcome
+    // Edge from Center -> Outcome (Directional animation follows the currently active outcome)
     const edgeId = `edge_center_to_${sector.outcomeType}`;
+    const edgeLabel = isSectorActive
+      ? (isRecommended ? '★ BEST FIT (ACTIVE)' : `★ ACTIVE (${sector.fitPercentage}%)`)
+      : (isRecommended ? '★ BEST FIT' : `${sector.fitPercentage}% FIT`);
+
     edges.push({
       id: edgeId,
       source: 'product_center',
@@ -127,31 +158,31 @@ export function buildCircularGraphElements(
       target: outcomeId,
       targetHandle: outcomeTargetHandle,
       type: 'straight',
-      animated: isRecommended,
-      label: isRecommended ? '★ BEST FIT' : `${sector.fitPercentage}% FIT`,
+      animated: isSectorActive,
+      label: edgeLabel,
       labelStyle: {
         fontSize: '9px',
         fontFamily: 'JetBrains Mono, monospace',
-        fontWeight: isRecommended ? 800 : 700,
-        fill: isRecommended ? '#0B0B0B' : '#544E43',
+        fontWeight: isSectorActive ? 800 : 700,
+        fill: isSectorActive ? '#0B0B0B' : '#544E43',
       },
       labelBgStyle: {
-        fill: isRecommended ? '#FFE600' : '#FFFDF5',
+        fill: isSectorActive ? '#FFE600' : '#FFFDF5',
         stroke: '#0B0B0B',
-        strokeWidth: isRecommended ? 1.5 : 1,
+        strokeWidth: isSectorActive ? 1.5 : 1,
         rx: 2,
         ry: 2,
       },
       labelBgPadding: [4, 2] as [number, number],
       style: {
-        stroke: isRecommended ? '#0B0B0B' : '#8C8474',
-        strokeWidth: isRecommended ? 3 : 1.5,
+        stroke: isSectorActive ? '#0B0B0B' : '#8C8474',
+        strokeWidth: isSectorActive ? 3 : 1.5,
       },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: isRecommended ? '#0B0B0B' : '#8C8474',
-        width: isRecommended ? 14 : 11,
-        height: isRecommended ? 14 : 11,
+        color: isSectorActive ? '#0B0B0B' : '#8C8474',
+        width: isSectorActive ? 14 : 11,
+        height: isSectorActive ? 14 : 11,
       },
     });
 
@@ -167,7 +198,7 @@ export function buildCircularGraphElements(
 
       const bx = R_BRANCHES * Math.cos(bRad);
       const by = R_BRANCHES * Math.sin(bRad);
-      const isActive = activeBranchId === branchId;
+      const isBranchActive = isSectorActive && (currentActiveBranchId === branchId);
 
       nodes.push({
         id: branchId,
@@ -176,13 +207,13 @@ export function buildCircularGraphElements(
         data: {
           branch,
           outcomeType: sector.outcomeType,
-          isActive,
+          isActive: isBranchActive,
           onNodeClick: callbacks?.onNodeClick,
           onSelectBranch: callbacks?.onSelectBranch,
         } as BranchNodeData,
       });
 
-      // Edge from Outcome -> Sub-Branch
+      // Edge from Outcome -> Sub-Branch (Animated directional arrow follows the active branch)
       const branchEdgeId = `edge_${outcomeId}_to_${branchId}`;
       edges.push({
         id: branchEdgeId,
@@ -191,16 +222,16 @@ export function buildCircularGraphElements(
         target: branchId,
         targetHandle: branchTargetHandle,
         type: 'smoothstep',
-        animated: isActive,
+        animated: isBranchActive,
         style: {
-          stroke: isActive ? '#0B0B0B' : '#A8A193',
-          strokeWidth: isActive ? 2.5 : 1.2,
+          stroke: isBranchActive ? '#0B0B0B' : '#A8A193',
+          strokeWidth: isBranchActive ? 2.5 : 1.2,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: isActive ? '#0B0B0B' : '#A8A193',
-          width: isActive ? 13 : 10,
-          height: isActive ? 13 : 10,
+          color: isBranchActive ? '#0B0B0B' : '#A8A193',
+          width: isBranchActive ? 13 : 10,
+          height: isBranchActive ? 13 : 10,
         },
       });
     });

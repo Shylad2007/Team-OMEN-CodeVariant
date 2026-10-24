@@ -46,14 +46,29 @@ export const CircularDecisionCanvas: React.FC<CircularDecisionCanvasProps> = ({
     []
   );
 
+  const handleNodeClick = (nodeId: string) => {
+    setInspectedNodeId(nodeId);
+    if (nodeId.startsWith('outcome_')) {
+      const outcomeType = nodeId.replace('outcome_', '') as keyof typeof tree.outcomes;
+      const sector = tree.outcomes[outcomeType];
+      if (sector && sector.subBranches.length > 0) {
+        onSelectActiveBranch(sector.subBranches[0].id);
+      }
+    } else if (nodeId !== 'product_center') {
+      onSelectActiveBranch(nodeId);
+    }
+  };
+
+  const handleSelectBranch = (bId: string) => {
+    onSelectActiveBranch(bId);
+    setInspectedNodeId(bId);
+  };
+
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () =>
       buildCircularGraphElements(tree, activeBranchId, {
-        onNodeClick: (nodeId) => setInspectedNodeId(nodeId),
-        onSelectBranch: (bId) => {
-          onSelectActiveBranch(bId);
-          setInspectedNodeId(bId);
-        },
+        onNodeClick: handleNodeClick,
+        onSelectBranch: handleSelectBranch,
       }),
     [tree, activeBranchId, onSelectActiveBranch]
   );
@@ -64,11 +79,8 @@ export const CircularDecisionCanvas: React.FC<CircularDecisionCanvasProps> = ({
   // Synchronize on state changes
   useEffect(() => {
     const { nodes: uNodes, edges: uEdges } = buildCircularGraphElements(tree, activeBranchId, {
-      onNodeClick: (nodeId) => setInspectedNodeId(nodeId),
-      onSelectBranch: (bId) => {
-        onSelectActiveBranch(bId);
-        setInspectedNodeId(bId);
-      },
+      onNodeClick: handleNodeClick,
+      onSelectBranch: handleSelectBranch,
     });
     setNodes(uNodes);
     setEdges(uEdges);
