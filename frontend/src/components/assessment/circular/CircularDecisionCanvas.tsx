@@ -119,7 +119,7 @@ export const CircularDecisionCanvas: React.FC<CircularDecisionCanvasProps> = ({
   // Ensure canvas fits properly on window / monitor resize
   useEffect(() => {
     const handleResize = () => {
-      reactFlowInstance.current?.fitView({ padding: 0.08 });
+      reactFlowInstance.current?.fitView({ padding: 0.1 });
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -127,15 +127,17 @@ export const CircularDecisionCanvas: React.FC<CircularDecisionCanvasProps> = ({
 
   // Center / Sector pan helpers
   const handleFitOverview = () => {
-    reactFlowInstance.current?.fitView({ padding: 0.08, duration: 350 });
+    reactFlowInstance.current?.fitView({ padding: 0.1, duration: 350 });
   };
 
   const handleFocusNode = (nodeId: string, zoom = 1.0) => {
     const foundNode = nodes.find((n) => n.id === nodeId);
     if (foundNode && reactFlowInstance.current) {
+      const halfW = nodeId === 'product_center' ? 110 : (nodeId.startsWith('outcome_') ? 110 : 102.5);
+      const halfH = nodeId === 'product_center' ? 50 : (nodeId.startsWith('outcome_') ? 48 : 46);
       reactFlowInstance.current.setCenter(
-        foundNode.position.x + 110,
-        foundNode.position.y + 48,
+        foundNode.position.x + halfW,
+        foundNode.position.y + halfH,
         { zoom, duration: 400 }
       );
     }
@@ -263,11 +265,11 @@ export const CircularDecisionCanvas: React.FC<CircularDecisionCanvasProps> = ({
               onInit={(instance) => {
                 reactFlowInstance.current = instance;
                 setTimeout(() => {
-                  instance.fitView({ padding: 0.12 });
+                  instance.fitView({ padding: 0.1 });
                 }, 60);
               }}
               fitView
-              fitViewOptions={{ padding: 0.12 }}
+              fitViewOptions={{ padding: 0.1 }}
               minZoom={0.2}
               maxZoom={2.0}
               proOptions={{ hideAttribution: true }}

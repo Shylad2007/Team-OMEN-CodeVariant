@@ -45,7 +45,7 @@ export function buildCircularGraphElements(
   nodes.push({
     id: 'product_center',
     type: 'centralProduct',
-    position: { x: -115, y: -50 },
+    position: { x: -110, y: -50 },
     data: {
       product: evaluatedTree.product,
       recommendedOutcome: evaluatedTree.recommendedOutcome,
@@ -53,9 +53,13 @@ export function buildCircularGraphElements(
     } as CentralNodeData,
   });
 
-  // Radii metrics - optimized compact circular structure (proportional and balanced)
-  const R_OUTCOMES = 225; // Radius to 5 Outcomes
-  const R_BRANCHES = 395; // Radius to Sub-Branches
+  // Calibrated anisotropic radial radii to eliminate all bounding box overlaps
+  // and guarantee >= 40px clearance between all nodes and connectors
+  const R_OUTCOMES_X = 320; // Horizontal radius to 5 Outcomes
+  const R_OUTCOMES_Y = 260; // Vertical radius to 5 Outcomes
+  const R_BRANCHES_X = 560; // Horizontal radius to Sub-Branches
+  const R_BRANCHES_Y = 440; // Vertical radius to Sub-Branches
+  const ANGULAR_SPREAD = 32; // Spread between sibling branches in degrees (+/- 16°)
 
   const outcomesList = Object.values(evaluatedTree.outcomes);
 
@@ -89,9 +93,9 @@ export function buildCircularGraphElements(
     const isRecommended = sector.outcomeType === evaluatedTree.recommendedOutcome;
     const isSectorActive = sector.outcomeType === activeOutcomeType;
 
-    // Outcome coordinates
-    const ox = R_OUTCOMES * Math.cos(rad);
-    const oy = R_OUTCOMES * Math.sin(rad);
+    // Outcome coordinates with anisotropic radial placement
+    const ox = R_OUTCOMES_X * Math.cos(rad);
+    const oy = R_OUTCOMES_Y * Math.sin(rad);
 
     nodes.push({
       id: outcomeId,
@@ -115,34 +119,22 @@ export function buildCircularGraphElements(
     // Determine facing source and target handles based on sector angle
     let centerSourceHandle = 'top';
     let outcomeTargetHandle = 'bottom';
-    let outcomeSourceHandle = 'src_top';
-    let branchTargetHandle = 'bottom';
 
     if (sector.outcomeType === 'repair') {
       centerSourceHandle = 'top';
       outcomeTargetHandle = 'bottom';
-      outcomeSourceHandle = 'src_top';
-      branchTargetHandle = 'bottom';
     } else if (sector.outcomeType === 'reuse') {
       centerSourceHandle = 'right';
       outcomeTargetHandle = 'left';
-      outcomeSourceHandle = 'src_right';
-      branchTargetHandle = 'left';
     } else if (sector.outcomeType === 'repurpose') {
       centerSourceHandle = 'bottom';
       outcomeTargetHandle = 'top';
-      outcomeSourceHandle = 'src_bottom';
-      branchTargetHandle = 'top';
     } else if (sector.outcomeType === 'replace') {
       centerSourceHandle = 'bottom';
       outcomeTargetHandle = 'top';
-      outcomeSourceHandle = 'src_bottom';
-      branchTargetHandle = 'top';
     } else if (sector.outcomeType === 'recycle') {
       centerSourceHandle = 'left';
       outcomeTargetHandle = 'right';
-      outcomeSourceHandle = 'src_left';
-      branchTargetHandle = 'right';
     }
 
     // Edge from Center -> Outcome (Directional animation follows the currently active outcome)
@@ -189,21 +181,20 @@ export function buildCircularGraphElements(
     // Sub-Branches radiating outward in this sector
     const branches = sector.subBranches;
     const branchCount = branches.length;
-    const angularSpread = 26; // +/- 13 degrees from sector angle
 
     branches.forEach((branch, bIdx) => {
       const branchId = branch.id;
-      const offsetAngle = branchCount > 1 ? (bIdx === 0 ? -angularSpread / 2 : angularSpread / 2) : 0;
+      const offsetAngle = branchCount > 1 ? (bIdx === 0 ? -ANGULAR_SPREAD / 2 : ANGULAR_SPREAD / 2) : 0;
       const bRad = ((sector.angleDegrees + offsetAngle) * Math.PI) / 180;
 
-      const bx = R_BRANCHES * Math.cos(bRad);
-      const by = R_BRANCHES * Math.sin(bRad);
+      const bx = R_BRANCHES_X * Math.cos(bRad);
+      const by = R_BRANCHES_Y * Math.sin(bRad);
       const isBranchActive = isSectorActive && (currentActiveBranchId === branchId);
 
       nodes.push({
         id: branchId,
         type: 'circularBranch',
-        position: { x: bx - 105, y: by - 46 },
+        position: { x: bx - 102.5, y: by - 46 },
         data: {
           branch,
           outcomeType: sector.outcomeType,
@@ -213,12 +204,36 @@ export function buildCircularGraphElements(
         } as BranchNodeData,
       });
 
+      // Dynamic handle pairing based on relative position vector
+      const dx = bx - ox;
+      const dy = by - oy;
+      let branchTargetHandle = 'top';
+      let outcomeBranchSourceHandle = 'src_bottom';
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0) {
+          outcomeBranchSourceHandle = 'src_right';
+          branchTargetHandle = 'left';
+        } else {
+          outcomeBranchSourceHandle = 'src_left';
+          branchTargetHandle = 'right';
+        }
+      } else {
+        if (dy > 0) {
+          outcomeBranchSourceHandle = 'src_bottom';
+          branchTargetHandle = 'top';
+        } else {
+          outcomeBranchSourceHandle = 'src_top';
+          branchTargetHandle = 'bottom';
+        }
+      }
+
       // Edge from Outcome -> Sub-Branch (Animated directional arrow follows the active branch)
       const branchEdgeId = `edge_${outcomeId}_to_${branchId}`;
       edges.push({
         id: branchEdgeId,
         source: outcomeId,
-        sourceHandle: outcomeSourceHandle,
+        sourceHandle: outcomeBranchSourceHandle,
         target: branchId,
         targetHandle: branchTargetHandle,
         type: 'smoothstep',

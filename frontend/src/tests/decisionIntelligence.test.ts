@@ -569,6 +569,49 @@ assert((reuseOutcomeNode?.data as any).isActive === true, 'Reuse outcome node is
 
 console.log('✓ Test 18 Passed: Radial graph synchronization dynamically animates active paths while preserving engine recommendation');
 
+// Test 19: Radial Graph Zero-Collision Clearance Invariant
+// Verify that all 16 nodes have strictly 0 bounding box overlaps with >= 30px breathing room
+const nodeBoundingBoxes: Record<string, { w: number; h: number }> = {
+  centralProduct: { w: 220, h: 100 },
+  outcomeSector: { w: 220, h: 96 },
+  circularBranch: { w: 205, h: 92 },
+};
+
+let minClearanceGap = Infinity;
+let collisionCount = 0;
+
+for (let i = 0; i < defaultGraph.nodes.length; i++) {
+  for (let j = i + 1; j < defaultGraph.nodes.length; j++) {
+    const nodeA = defaultGraph.nodes[i];
+    const nodeB = defaultGraph.nodes[j];
+    const boxA = nodeBoundingBoxes[nodeA.type || 'outcomeSector'] || { w: 220, h: 96 };
+    const boxB = nodeBoundingBoxes[nodeB.type || 'outcomeSector'] || { w: 220, h: 96 };
+
+    const aX = nodeA.position.x;
+    const aY = nodeA.position.y;
+    const bX = nodeB.position.x;
+    const bY = nodeB.position.y;
+
+    const xOverlap = Math.min(aX + boxA.w, bX + boxB.w) - Math.max(aX, bX);
+    const yOverlap = Math.min(aY + boxA.h, bY + boxB.h) - Math.max(aY, bY);
+
+    if (xOverlap > 0 && yOverlap > 0) {
+      collisionCount++;
+    } else {
+      const dx = Math.max(0, Math.max(aX - (bX + boxB.w), bX - (aX + boxA.w)));
+      const dy = Math.max(0, Math.max(aY - (bY + boxB.h), bY - (aY + boxA.h)));
+      const gap = Math.hypot(dx, dy);
+      if (gap < minClearanceGap) {
+        minClearanceGap = gap;
+      }
+    }
+  }
+}
+
+assert(collisionCount === 0, `Radial decision graph must have 0 collisions (found ${collisionCount})`);
+assert(minClearanceGap >= 30, `Minimum gap between all graph nodes must be >= 30px (got ${minClearanceGap.toFixed(1)}px)`);
+console.log(`✓ Test 19 Passed: Radial graph zero-collision invariant verified with minimum clearance of ${minClearanceGap.toFixed(1)}px across all nodes`);
+
 console.log('\n======================================================');
-console.log('ALL 18 DECISION INTELLIGENCE, ELIGIBILITY, AND GRAPH TESTS PASSED!');
+console.log('ALL 19 DECISION INTELLIGENCE, ELIGIBILITY, AND GRAPH TESTS PASSED!');
 console.log('======================================================');
