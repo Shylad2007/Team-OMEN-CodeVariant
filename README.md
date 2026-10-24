@@ -38,7 +38,7 @@ Every assessed item is evaluated against five interconnected circular strategies
           └─────────────┘
                  │
 ┌─────────────┐  ┼  ┌─────────────┐
-│   RECYCLE   │ ──┼── │    REUSE    │ ── Transfer intact goods to peers, charities, or secondary roles
+│   RECYCLE   │──┼──│    REUSE    │ ── Transfer intact goods to peers, charities, or secondary roles
 └─────────────┘  │  └─────────────┘
                  │
           ┌─────────────┐
